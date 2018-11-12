@@ -2,9 +2,9 @@ import numpy as np
 from scipy import signal
 from scipy.io.wavfile import read
 import matplotlib.pyplot as plt
-
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
+
 
 # Read audio as a time-signal
 def read_audio(filename):
@@ -29,35 +29,54 @@ def visualize_stft(f, t, Zxx):
     plt.show(block=False)
 
 
-# Peak Identification
-def find_peaks_shift(f, t, Zxx):
-    pzxx = np.abs(Zxx)
-    threshold = 100
+# Coarse segmentation for peak identification
+def segment_coarse(f, t, Zxx):
+    f_zone = 3
+    t_zone = 3
+    f_len = f.shape[0]
+    t_len = t.shape[0]
+    for freq in range(0, f_zone, f_len):
+        for time in range(0, t_zone, t.shape[0]):
+            f_end = freq + f_zone if freq + f_zone < f_len else f_len
+            t_end = time + t_zone if time + t_zone < t_len else t_len
+            peaks = find_peaks_shift(f[freq: f_end], t[time: t_end],
+                                     Zxx[freq: f_end, time: t_end])
 
-    # Find all peaks in the zone
-    peaks = np.ones(pzxx.shape)
+    return None
+
+
+# Peak Identification
+def find_peaks_shift(f, t, Zxx, threshold = 1.0):
+    spect = np.abs(Zxx)
+
+    # Find all peaks in the spectrogram
+    peaks = np.ones(spect.shape)
     for h in range(-1, 2):
         for v in range(-1, 2):
-            pzxx_shift = np.roll(pzxx, shift=[h, v], axis=[0, 1])
-            peaks_new = (pzxx > pzxx_shift)
+            if h == 0 & v == 0:
+                continue
+            pzxx_shift = np.roll(spect, shift=[h, v], axis=[0, 1])
+            peaks_new = (spect > pzxx_shift)
             peaks_rebuilt = (peaks == peaks_new)
             peaks = peaks_rebuilt
 
     # Prune by amplitude
-    pzxx_peaks = np.copy(pzxx)
-    pzxx_peaks[peaks != True] = 0
-    pzxx_peaks[np.where(pzxx_peaks < threshold)] = 0
+    spect_peaks = np.copy(spect)
+    spect_peaks[peaks != True] = 0
+    visualize_stft(f, t, spect_peaks)
+    peaks_thresh = np.max(spect_peaks) * threshold
+    spect_peaks[spect_peaks < peaks_thresh] = 0
+    print(np.sum(spect_peaks != 0))
+    print(np.max(spect_peaks))
 
     # Merge Peaks from zones into a single vector
-    visualize_stft(f, t, peaks)
-    visualize_stft(f, t, pzxx_peaks)
+    visualize_stft(f, t, spect_peaks)
 
-    return pzxx_peaks
+    return spect_peaks
 
 
-def find_peaks_filt(f, t, Zxx):
+def find_peaks_filt(f, t, Zxx, threshold=100):
     pzxx = np.abs(Zxx)
-    threshold = 100
     neighborhood_size = [5, 1]
 
     # Find all peaks in the zone
@@ -87,6 +106,7 @@ def find_peaks_filt(f, t, Zxx):
 
     return x, y
 
+
 # Coarse Segmentation: Split into equally spaced zones
 # Anchor Point Hashing
 # For each peak:
@@ -100,15 +120,10 @@ def find_peaks_filt(f, t, Zxx):
 # Record results of hash table fingerprints
 # Timestamp extraction
 
-for i in range(0, 10):
+for i in range(0, 1):
     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
     f, t, Zxx = transform_stft(sound, r, 10000)
-    print(Zxx.shape)
-    print(f.shape)
-    print(t.shape)
-    #visualize_stft(f, t, Zxx)
-#plt.show()
-sound, r = read_audio('./main/bin/t1.wav')
-f, t, Zxx = transform_stft(sound, r, 1000)
-find_peaks_shift(f, t, Zxx)
+    visualize_stft(f, t, Zxx)
+    find_peaks_shift(f, t, Zxx)
+    # find_peaks_filt(f, t, Zxx)
 plt.show()
