@@ -45,8 +45,15 @@ def segment_coarse(f, t, Zxx):
     return None
 
 
+def find_nearest_index(a, a0):
+        "Index in nd array `a` closest to the scalar value `a0`"
+        idx = np.abs(a - a0).argmin(axis=None)
+        idx_nd = np.unravel_index(np.abs(a - a0).argmin(axis=None), a.shape)
+        return idx_nd
+
+
 # Peak Identification
-def find_peaks_shift(f, t, Zxx, threshold = 1.0):
+def find_peaks_shift(f, t, Zxx, threshold=1.0):
     spect = np.abs(Zxx)
 
     # Find all peaks in the spectrogram
@@ -63,14 +70,39 @@ def find_peaks_shift(f, t, Zxx, threshold = 1.0):
     # Prune by amplitude
     spect_peaks = np.copy(spect)
     spect_peaks[peaks != True] = 0
-    visualize_stft(f, t, spect_peaks)
-    peaks_thresh = np.max(spect_peaks) * threshold
-    spect_peaks[spect_peaks < peaks_thresh] = 0
-    print(np.sum(spect_peaks != 0))
-    print(np.max(spect_peaks))
 
-    # Merge Peaks from zones into a single vector
+    # Time-Frequency segmentation
+    fMax = f.shape[0]
+    tMax = t.shape[0]
+    # Aim for 2-second, 5000 Hz windows
+    fInc = find_nearest_index(f, 5000)[0]
+    tInc = find_nearest_index(t, 2.0)[0]
+
+    for sf in range(0, fMax, fInc):
+        sfNext = sf + fInc
+        if (sfNext > fMax):
+            sfNext = fMax
+        for st in range (0, tMax, tInc):
+            stNext = st + tInc
+            if (stNext > tMax):
+                stNext = tMax
+            spect_window = spect_peaks[sf : sfNext, st: stNext]
+            peaks_thresh = np.max(spect_window) * threshold
+            spect_window[spect_window < peaks_thresh] = 0
+            print(np.sum(spect_peaks != 0))
+
+    # Prune by amplitude
+   # spect_peaks = np.copy(spect)
+    #spect_peaks[peaks != True] = 0
+
+    #peaks_thresh = np.max(spect_peaks) * threshold
+   # spect_peaks[spect_peaks < peaks_thresh] = 0
+    print(np.sum(spect_peaks != 0))
+
+    x, y = np.where(spect_peaks != 0)
     visualize_stft(f, t, spect_peaks)
+    plt.figure()
+    plt.plot(x, y, 'rx')
 
     return spect_peaks
 
