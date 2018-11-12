@@ -28,6 +28,14 @@ def visualize_stft(f, t, Zxx):
     plt.xlabel('Time [sec]')
     plt.show(block=False)
 
+def visualize_peaks(f, t, x, y):
+    plt.figure()
+    plt.plot(t[x], f[y], 'rx')
+    plt.title('STFT Peaks')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time [sec]')
+    plt.show(block=False)
+
 
 # Coarse segmentation for peak identification
 def segment_coarse(f, t, Zxx):
@@ -75,21 +83,34 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
     fMax = f.shape[0]
     tMax = t.shape[0]
     # Aim for 2-second, 5000 Hz windows
-    fInc = find_nearest_index(f, 5000)[0]
-    tInc = find_nearest_index(t, 2.0)[0]
+    fInc = find_nearest_index(f, 2000)[0]
+    tInc = find_nearest_index(t, 1.5)[0]
 
     for sf in range(0, fMax, fInc):
         sfNext = sf + fInc
         if (sfNext > fMax):
             sfNext = fMax
+
         for st in range (0, tMax, tInc):
             stNext = st + tInc
             if (stNext > tMax):
                 stNext = tMax
+
+            thisThresh = threshold
+            if (f[sf] > 3000):
+                thisThresh = thisThresh * 1.5
+            elif (f[sf] > 10000):
+                thisThresh = thisThresh * 2.0
+            elif (f[sf] > 15000):
+                thisThresh = thisThresh * 2.5
+            if (thisThresh > 1.0):
+                thisThresh = 1.0
+
             spect_window = spect_peaks[sf : sfNext, st: stNext]
-            peaks_thresh = np.max(spect_window) * threshold
+            peaks_thresh = np.max(spect_window) * thisThresh
+
             spect_window[spect_window < peaks_thresh] = 0
-            print(np.sum(spect_peaks != 0))
+            # print(np.sum(spect_peaks != 0))
 
     # Prune by amplitude
    # spect_peaks = np.copy(spect)
@@ -99,10 +120,9 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
    # spect_peaks[spect_peaks < peaks_thresh] = 0
     print(np.sum(spect_peaks != 0))
 
-    x, y = np.where(spect_peaks != 0)
+    y, x = np.where(spect_peaks != 0)
     visualize_stft(f, t, spect_peaks)
-    plt.figure()
-    plt.plot(x, y, 'rx')
+    visualize_peaks(f, t, x, y)
 
     return spect_peaks
 
