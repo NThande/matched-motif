@@ -1,9 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from scipy.io.wavfile import read
-import matplotlib.pyplot as plt
-import scipy.ndimage as ndimage
-import scipy.ndimage.filters as filters
 
 
 # Read audio as a time-signal
@@ -12,9 +10,7 @@ def read_audio(filename):
     return sound, fs
 
 
-# Transform audio to Time-Frequency Domain
-# Short = Time Fourier Transform
-# Stride: Half-Windows
+# Transform audio to Time-Frequency Domain with STFT
 def transform_stft(sound, fs, segLen=1000):
     f, t, Zxx = signal.stft(sound, fs, nperseg=segLen)
     return f, t, Zxx
@@ -29,22 +25,51 @@ def visualize_stft(f, t, Zxx):
     plt.show(block=False)
 
 
-def visualize_peaks(f, t, peaks, threshold):
+def visualize_peaks(f, t, peaks, threshold=-1):
     y, x = np.where(peaks != 0)
     plt.figure()
     plt.plot(t[x], f[y], 'rx')
-    plt.title('STFT Peaks, Threshold = {}'.format(threshold))
+    if (threshold >= 0):
+        title = 'STFT Peaks, Threshold = {}'.format(threshold)
+    else:
+        title = 'STFT Peaks'
+    plt.title(title)
     plt.ylabel('Frequency [Hz]')
     plt.xlabel('Time [sec]')
     plt.show(block=False)
 
 
+def visualize_peak_pairs(f, t, peaks, pairs, inc=50):
+
+    visualize_peaks(f, t, peaks)
+    count = 0
+    f_cur = 0
+    t_cur = 0
+
+    for k in range(0, pairs.shape[0]):
+        if (f_cur != pairs[k, 0]) or (t_cur != pairs[k, 2]):
+            f_cur = pairs[k, 0]
+            t_cur = pairs[k, 2]
+            count += 1
+
+        if count % inc == 0:
+            plt.plot([t[pairs[k, 2]], t[pairs[k, 3]]], [f[pairs[k, 0]], f[pairs[k, 1]]], 'b-')
+            plt.plot(t[pairs[k, 3]], f[pairs[k, 1]], 'b.')
+            plt.plot(t[pairs[k, 2]], f[pairs[k, 0]], 'ko')
+
+    plt.title('Peak Pairs')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time [sec]')
+    plt.show(block=False)
+    return 0
+
+
 # Find the index of the value closest to a0 in a
 def find_nearest_index(a, a0):
-        "Index in nd array `a` closest to the scalar value `a0`"
-        idx = np.abs(a - a0).argmin(axis=None)
-        idx_nd = np.unravel_index(np.abs(a - a0).argmin(axis=None), a.shape)
-        return idx_nd
+    "Index in nd array `a` closest to the scalar value `a0`"
+    idx = np.abs(a - a0).argmin(axis=None)
+    idx_nd = np.unravel_index(np.abs(a - a0).argmin(axis=None), a.shape)
+    return idx_nd
 
 
 # Peak Identification
@@ -71,20 +96,22 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
     tMax = t.shape[0]
 
     # Aim for 2-second, 5000 Hz windows
-    fInc = find_nearest_index(f, 2000)[0]
-    tInc = find_nearest_index(t, 1.5)[0]
+    fInc = find_nearest_index(f, 1000)[0]
+    tInc = find_nearest_index(t, 1)[0]
 
     for sf in range(0, fMax, fInc):
         sfNext = sf + fInc
         if (sfNext > fMax):
             sfNext = fMax
 
-        for st in range (0, tMax, tInc):
+        for st in range(0, tMax, tInc):
             stNext = st + tInc
             if (stNext > tMax):
                 stNext = tMax
 
             thisThresh = threshold
+            if (f[sf] < 500):
+                thisThresh = thisThresh * 1.5
             if (f[sf] > 3000):
                 thisThresh = thisThresh * 1.5
             elif (f[sf] > 10000):
@@ -94,22 +121,53 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
             if (thisThresh > 1.0):
                 thisThresh = 1.0
 
-            spect_window = spect_peaks[sf : sfNext, st: stNext]
+            spect_window = spect_peaks[sf: sfNext, st: stNext]
             peaks_thresh = np.max(spect_window) * thisThresh
 
             spect_window[spect_window < peaks_thresh] = 0
-            # print(np.sum(spect_peaks != 0))
 
-    print(np.sum(spect_peaks != 0))
-    return spect_peaks
+    num_peaks = np.sum(spect_peaks != 0)
+    return spect_peaks, num_peaks
+
+
+# Anchor Point Pairing
+# Pair peaks with each other
+def pair_peaks(peaks, fanout=6):
+    pairs = np.zeros((0, 4))
+    fidx, tidx = np.where(peaks != 0)
+
+    # Create the target zone
+    ftz_max = 1000
+    ttz_max = 100
+
+    plt.figure()
+    plt.plot(tidx, fidx, 'rx')
+    for i in range(0, fidx.size):
+        ftz_idx = np.where(
+            np.logical_and(fidx >= fidx[i] - ftz_max, fidx <= fidx[i] + ftz_max))  # Frequency target zone
+        ttz_idx = np.where(np.logical_and(tidx >= tidx[i] + 1, tidx <= tidx[i] + ttz_max))  # Frequency target zone
+        tzone_idx = np.intersect1d(ftz_idx, ttz_idx)
+
+        # Pair a fixed number of peaks within the target zone
+        max_pairs = min(tzone_idx.size, fanout)
+        for j in range(0, max_pairs):
+            pairs = np.vstack((pairs, np.array([fidx[i], fidx[tzone_idx[j]], tidx[i], tidx[tzone_idx][j]])))
+            if i % 50 == 0:
+                plt.plot([tidx[i], tidx[tzone_idx[j]]], [fidx[i], fidx[tzone_idx][j]], 'b-')
+                plt.plot(tidx[tzone_idx[j]], fidx[tzone_idx][j], 'b.')
+                plt.plot(tidx[i], fidx[i], 'ko')
+    pairs = pairs.astype(int)
+    num_pairs = pairs.shape[0]
+    return pairs, num_pairs
 
 
 # Anchor Point Hashing
-# For each peak:
-# Set the target zone
-# Pair a fixed number of peaks within the target zone
+# For each pair:
 # Create a hash for each pair
 # Merge hashes into a single database
+def convert_to_hashes(pairs):
+    return 0
+
 
 # Create a sliding window
 # Query the hash table
@@ -120,9 +178,16 @@ for i in range(0, 1):
     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
     f, t, Zxx = transform_stft(sound, r, 10000)
     visualize_stft(f, t, Zxx)
-    kRange = np.linspace(0, 1, 10)
-    for k in kRange:
-        peaks = find_peaks_shift(f, t, Zxx, k)
-        # visualize_stft(f, t, peaks)
-        visualize_peaks(f, t, peaks, k)
+    # kRange = np.linspace(0, 1, 10)
+    # for k in kRange:
+    #     peaks, num_peaks = find_peaks_shift(f, t, Zxx, k)
+    #     print(num_peaks)
+    #     visualize_stft(f, t, peaks)
+    #     visualize_peaks(f, t, peaks, k)
+    peaks, num_peaks = find_peaks_shift(f, t, Zxx, 1.0)
+    print(num_peaks)
+    visualize_peaks(f, t, peaks)
+    pairs, num_pairs = pair_peaks(peaks)
+    visualize_peak_pairs(f, t, peaks, pairs)
+    print(num_pairs)
 plt.show()
