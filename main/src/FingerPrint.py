@@ -11,14 +11,14 @@ def read_audio(filename):
 
 
 # Transform audio to Time-Frequency Domain with STFT
-def transform_stft(sound, fs, segLen=1000):
-    f, t, Zxx = signal.stft(sound, fs, nperseg=segLen)
-    return f, t, Zxx
+def transform_stft(sound, fs, seg_len=1000):
+    f, t, zxx = signal.stft(sound, fs, nperseg=seg_len)
+    return f, t, zxx
 
 
-def visualize_stft(f, t, Zxx):
+def visualize_stft(f, t, zxx):
     plt.figure()
-    plt.pcolormesh(t, f, np.abs(Zxx), vmin=0, vmax=5)
+    plt.pcolormesh(t, f, np.abs(zxx), vmin=0, vmax=5)
     plt.title('STFT Magnitude')
     plt.ylabel('Frequency [Hz]')
     plt.xlabel('Time [sec]')
@@ -40,7 +40,6 @@ def visualize_peaks(f, t, peaks, threshold=-1):
 
 
 def visualize_peak_pairs(f, t, peaks, pairs, inc=50):
-
     visualize_peaks(f, t, peaks)
     count = 0
     f_cur = 0
@@ -73,8 +72,8 @@ def find_nearest_index(a, a0):
 
 
 # Peak Identification
-def find_peaks_shift(f, t, Zxx, threshold=1.0):
-    spect = np.abs(Zxx)
+def find_peaks_shift(f, t, zxx, threshold=1.0):
+    spect = np.abs(zxx)
 
     # Find all peaks in the spectrogram
     peaks = np.ones(spect.shape)
@@ -100,29 +99,29 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
     tInc = find_nearest_index(t, 1)[0]
 
     for sf in range(0, fMax, fInc):
-        sfNext = sf + fInc
-        if (sfNext > fMax):
-            sfNext = fMax
+        sf_next = sf + fInc
+        if (sf_next > fMax):
+            sf_next = fMax
 
         for st in range(0, tMax, tInc):
-            stNext = st + tInc
-            if (stNext > tMax):
-                stNext = tMax
+            st_next = st + tInc
+            if st_next > tMax:
+                st_next = tMax
 
-            thisThresh = threshold
-            if (f[sf] < 500):
-                thisThresh = thisThresh * 1.5
-            if (f[sf] > 3000):
-                thisThresh = thisThresh * 1.5
-            elif (f[sf] > 10000):
-                thisThresh = thisThresh * 2.0
-            elif (f[sf] > 15000):
-                thisThresh = thisThresh * 2.5
-            if (thisThresh > 1.0):
-                thisThresh = 1.0
+            this_thresh = threshold
+            if f[sf] < 500:
+                this_thresh = this_thresh * 1.5
+            if f[sf] > 3000:
+                this_thresh = this_thresh * 1.5
+            elif f[sf] > 10000:
+                this_thresh = this_thresh * 2.0
+            elif f[sf] > 15000:
+                this_thresh = this_thresh * 2.5
+            if this_thresh > 1.0:
+                this_thresh = 1.0
 
-            spect_window = spect_peaks[sf: sfNext, st: stNext]
-            peaks_thresh = np.max(spect_window) * thisThresh
+            spect_window = spect_peaks[sf: sf_next, st: st_next]
+            peaks_thresh = np.max(spect_window) * this_thresh
 
             spect_window[spect_window < peaks_thresh] = 0
 
@@ -132,7 +131,7 @@ def find_peaks_shift(f, t, Zxx, threshold=1.0):
 
 # Anchor Point Pairing
 # Pair peaks with each other
-def pair_peaks(peaks, fanout=6):
+def pair_peaks(peaks, fanout=3):
     pairs = np.zeros((0, 4))
     fidx, tidx = np.where(peaks != 0)
 
@@ -140,22 +139,18 @@ def pair_peaks(peaks, fanout=6):
     ftz_max = 1000
     ttz_max = 100
 
-    plt.figure()
-    plt.plot(tidx, fidx, 'rx')
     for i in range(0, fidx.size):
         ftz_idx = np.where(
             np.logical_and(fidx >= fidx[i] - ftz_max, fidx <= fidx[i] + ftz_max))  # Frequency target zone
-        ttz_idx = np.where(np.logical_and(tidx >= tidx[i] + 1, tidx <= tidx[i] + ttz_max))  # Frequency target zone
+        ttz_idx = np.where(
+            np.logical_and(tidx >= tidx[i] + 1, tidx <= tidx[i] + ttz_max))  # Frequency target zone
         tzone_idx = np.intersect1d(ftz_idx, ttz_idx)
 
         # Pair a fixed number of peaks within the target zone
         max_pairs = min(tzone_idx.size, fanout)
         for j in range(0, max_pairs):
             pairs = np.vstack((pairs, np.array([fidx[i], fidx[tzone_idx[j]], tidx[i], tidx[tzone_idx][j]])))
-            if i % 50 == 0:
-                plt.plot([tidx[i], tidx[tzone_idx[j]]], [fidx[i], fidx[tzone_idx][j]], 'b-')
-                plt.plot(tidx[tzone_idx[j]], fidx[tzone_idx][j], 'b.')
-                plt.plot(tidx[i], fidx[i], 'ko')
+
     pairs = pairs.astype(int)
     num_pairs = pairs.shape[0]
     return pairs, num_pairs
@@ -174,17 +169,17 @@ def convert_to_hashes(pairs):
 # Record results of hash table fingerprints
 # Timestamp extraction
 
-for i in range(0, 1):
+for i in range(3, 4):
     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
-    f, t, Zxx = transform_stft(sound, r, 10000)
-    visualize_stft(f, t, Zxx)
+    f, t, zxx = transform_stft(sound, r, 10000)
+    visualize_stft(f, t, zxx)
     # kRange = np.linspace(0, 1, 10)
     # for k in kRange:
     #     peaks, num_peaks = find_peaks_shift(f, t, Zxx, k)
     #     print(num_peaks)
     #     visualize_stft(f, t, peaks)
     #     visualize_peaks(f, t, peaks, k)
-    peaks, num_peaks = find_peaks_shift(f, t, Zxx, 1.0)
+    peaks, num_peaks = find_peaks_shift(f, t, zxx, 1.0)
     print(num_peaks)
     visualize_peaks(f, t, peaks)
     pairs, num_pairs = pair_peaks(peaks)
