@@ -161,7 +161,14 @@ def pair_peaks(peaks, fanout=3):
 # Create a hash for each pair
 # Merge hashes into a single database
 def convert_to_hashes(pairs):
-    return 0
+    hashtable = {}
+    for pV in pairs:
+        f_diff = pV[0] - pV[1]
+        t_diff = pV[2] - pV[3]
+        time_stamp = pV[2]
+        hash = np.round(np.abs(f_diff) * 1000000) + np.round(np.abs(t_diff) * 1000) + pV[0]
+        hashtable[hash] = time_stamp
+    return hashtable
 
 
 # Create a sliding window
@@ -180,9 +187,11 @@ for i in range(3, 4):
     #     visualize_stft(f, t, peaks)
     #     visualize_peaks(f, t, peaks, k)
     peaks, num_peaks = find_peaks_shift(f, t, zxx, 1.0)
-    print(num_peaks)
+    print("Number of peaks: {}".format(num_peaks))
     visualize_peaks(f, t, peaks)
     pairs, num_pairs = pair_peaks(peaks)
     visualize_peak_pairs(f, t, peaks, pairs)
-    print(num_pairs)
+    print("Number of peak pairs: {}".format(num_pairs))
+    pair_table = convert_to_hashes(pairs)
+    print("Number of unique hashes: {}".format(len(pair_table)))
 plt.show()
