@@ -2,6 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from scipy.io.wavfile import read
+from scipy.ndimage.filters import maximum_filter
+from scipy.ndimage.morphology import (generate_binary_structure,
+                                      iterate_structure, binary_erosion)
+from operator import itemgetter
+
+######################################################################
+IDX_FREQ = 0
+IDX_TIME = 2
+IDX_TDELTA = 4
+######################################################################
+
 
 # Read audio as a time-signal
 def read_audio(filename):
@@ -12,7 +23,6 @@ def read_audio(filename):
 # Transform audio to Time-Frequency Domain with STFT
 def transform_stft(sound, fs, seg_len=1000):
     f, t, zxx = signal.stft(sound, fs, nperseg=seg_len)
-    zxx = 10 * np.log10(zxx)
     return f, t, zxx
 
 
@@ -39,22 +49,23 @@ def plot_peaks(f, t, peaks, threshold=-1):
     plt.show(block=False)
 
 
-def plot_peak_pairs(f, t, peaks, pairs, inc=50):
+def plot_pairs(f, t, peaks, pairs, inc=50):
     plot_peaks(f, t, peaks)
     count = 0
     f_cur = 0
     t_cur = 0
 
     for k in range(0, pairs.shape[0]):
-        if (f_cur != pairs[k, 0]) or (t_cur != pairs[k, 2]):
-            f_cur = pairs[k, 0]
-            t_cur = pairs[k, 2]
+        if (f_cur != pairs[k, IDX_FREQ]) or (t_cur != pairs[k, IDX_TIME]):
+            f_cur = pairs[k, IDX_FREQ]
+            t_cur = pairs[k, IDX_TIME]
             count += 1
 
         if count % inc == 0:
-            plt.plot([t[pairs[k, 2]], t[pairs[k, 3]]], [f[pairs[k, 0]], f[pairs[k, 1]]], 'b-')
-            plt.plot(t[pairs[k, 3]], f[pairs[k, 1]], 'b.')
-            plt.plot(t[pairs[k, 2]], f[pairs[k, 0]], 'ko')
+            plt.plot([pairs[k, IDX_TIME], pairs[k, IDX_TIME + 1]],
+                     [pairs[k, IDX_FREQ], pairs[k, IDX_FREQ + 1]], 'b-')
+            plt.plot(pairs[k, IDX_TIME], pairs[k, IDX_FREQ], 'ko')
+            plt.plot(pairs[k, IDX_TIME + 1], pairs[k, IDX_FREQ + 1], 'b.')
 
     plt.title('Peak Pairs')
     plt.ylabel('Frequency [Hz]')
@@ -71,7 +82,6 @@ def find_nearest_index(a, a0):
     return idx_nd
 
 
-# Peak Identification
 def find_peaks_shift(f, t, zxx, threshold=1.0):
     spect = np.abs(zxx)
 
@@ -129,38 +139,73 @@ def find_peaks_shift(f, t, zxx, threshold=1.0):
     return spect_peaks, num_peaks
 
 
-
 # Anchor Point Pairing
 # Pair peaks with each other
-def get_peak_pairs(peaks, fanout=3):
-    pairs = np.zeros((0, 4))
+def pair_peaks(f, t, peaks, fanout=3):
+    pairs = np.zeros((0, 5))
     fidx, tidx = np.where(peaks != 0)
 
     # Create the target zone
-    ftz_max = 1000
-    ttz_max = 100
+    freq_tz_max = 1000
+    time_tz_max = 100
 
     for i in range(0, fidx.size):
-        ftz_idx = np.where(
-            np.logical_and(fidx >= fidx[i] - ftz_max, fidx <= fidx[i] + ftz_max))  # Frequency target zone
-        ttz_idx = np.where(
-            np.logical_and(tidx >= tidx[i] + 1, tidx <= tidx[i] + ttz_max))  # Time target zone
-        tzone_idx = np.intersect1d(ftz_idx, ttz_idx)
-
+        freq_tz_idx = np.where(
+            np.logical_and(fidx >= fidx[i] - freq_tz_max, fidx <= fidx[i] + freq_tz_max))  # Frequency target zone
+        time_tz_idx = np.where(
+            np.logical_and(tidx >= tidx[i] + 1, tidx <= tidx[i] + time_tz_max))  # Time target zone
+        # target_idx = np.intersect1d(freq_tz_idx, time_tz_idx)
+        target_idx = np.asarray(time_tz_idx, int).T
         # Pair a fixed number of peaks within the target zone
-        max_pairs = min(tzone_idx.size, fanout)
+        max_pairs = min(target_idx.shape[0], fanout)
         for j in range(0, max_pairs):
-            pairs = np.vstack((pairs, np.array([fidx[i], fidx[tzone_idx[j]], tidx[i], tidx[tzone_idx][j]])))
+            f1 = f[fidx[i]]
+            f2 = f[fidx[target_idx[j]]]
+            t1 = t[tidx[i]]
+            t2 = t[tidx[target_idx[j]]]
+            t_delta = np.abs(t1 - t2)
+            pairs = np.vstack((pairs, np.array([f1, f2, t1, t2, t_delta])))
 
     pairs = pairs.astype(int)
+    pairs.sort(axis=0)
     num_pairs = pairs.shape[0]
     return pairs, num_pairs
 
+# Create a 2-second sliding window
 
-# Create a sliding window
-# Query the hash table
+# Query the pair table
+def search_for_pair(pairs, query):
+
+    # Create the target zone
+    ftz = 1000
+    ttz = 0.5
+    num_pairs = pairs.shape[0]
+    matches = []
+    for i in range(0, num_pairs):
+        if pairs[i][IDX_FREQ] != query[IDX_FREQ]:
+            continue
+        elif pairs[i][IDX_FREQ + 1] != query[IDX_FREQ + 1]:
+            continue
+        elif pairs[i][IDX_TDELTA] != query[IDX_TDELTA]:
+            continue
+        else:
+            matches.append(i)
+    return np.asarray(matches, int)
+
+
 # Record results of hash table fingerprints
+def accumulate_searches(pairs, query_pairs):
+    pair_matches = np.zeros(pairs.shape[0])
+    for query in query_pairs:
+        matches = search_for_pair(pairs, query)
+        pair_matches[matches] += 1
+    return pair_matches
+
+
 # Timestamp extraction
+def merge_samples(pair_matches):
+    pass
+
 
 for i in range(0, 1):
     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
@@ -175,7 +220,21 @@ for i in range(0, 1):
     peaks, num_peaks = find_peaks_shift(f, t, zxx, 1.0)
     print("Number of peaks: {}".format(num_peaks))
     plot_peaks(f, t, peaks)
-    pairs, num_pairs = get_peak_pairs(peaks)
-    plot_peak_pairs(f, t, peaks, pairs)
+    pairs, num_pairs = pair_peaks(f, t, peaks)
+    plot_pairs(f, t, peaks, pairs)
     print("Number of peak pairs: {}".format(num_pairs))
+
+    # Create a small sound clip
+    tIdx = find_nearest_index(t, 2)[0]
+    t_clip = t[0:tIdx]
+    zxx_clip = zxx[:, 0:tIdx]
+    visualize_stft(f, t_clip, zxx_clip)
+    peaks_clip, num_peaks_clip = find_peaks_shift(f, t_clip, zxx_clip, 1.0)
+    pairs_clip, num_pairs_clip = pair_peaks(f, t_clip, peaks_clip)
+    plot_pairs(f, t, peaks, pairs, inc=1)
+
+    matches = search_for_pair(pairs, pairs_clip[0, :])
+    print(pairs_clip[0, :])
+    print(pairs[0:50])
+    print(matches)
 plt.show()
