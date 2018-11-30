@@ -9,7 +9,8 @@ from scipy.ndimage.morphology import (generate_binary_structure,
 # Modified from Dejavu Fingerprinting System (as of 11.21.18)
 FREQ_IDX = 0
 PEAK_TIME_IDX = 1
-PAIR_TIME_IDX = 3
+PAIR_TIME_IDX = 2
+PAIR_TDELTA_IDX = 4
 DEFAULT_FS = 44100
 DEFAULT_WINDOW_SIZE = 4096
 DEFAULT_OVERLAP_RATIO = 0.5
@@ -50,13 +51,6 @@ def fingerprint(samples, Fs=DEFAULT_FS,
         window='hann',
         nperseg=int(wsize),
         noverlap=int(wsize * wratio))
-
-    # spect, freqs, times = plt.mlab.specgram(
-    #     samples,
-    #     NFFT=wsize,
-    #     Fs=Fs,
-    #     window=plt.mlab.window_hanning,
-    #     noverlap=int(wsize * wratio))
 
     # apply log transform since specgram() returns linear array
     spect[spect == -np.inf] = 0
@@ -151,7 +145,7 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
                 t_delta = t2 - t1
 
                 if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
-                    pairs = np.vstack((pairs, np.array([freq1, freq2, t_delta, t1, t2])))
+                    pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
 
     # print(pairs.shape)
     pairs = np.unique(pairs, axis=0)
@@ -160,33 +154,30 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
 
 # Query the pair table
 def search_for_pair(pairs, query):
-    f1_where = np.where(query[0] == pairs[:,0])[0]
-    #print(f1_where.shape)
-    # print(pairs[f1_where])
-    f2_where = np.where(pairs[:,1] == query[1] + 1000)[0]
-    # print(pairs[f2_where])
-    #tdelta_where = np.where(pairs[:,2] == query[2])[0]
-    #print(pairs[tdelta_where])
-    idx = np.intersect1d(f1_where, f2_where, assume_unique=True)
-    #print(idx)
-    #vector_where = np.where(np.all(pairs[:, 0:2] == query[0:2]))[0]
-    #print(vector_where)
-    return np.asarray(idx, int)
-    # # Create the target zone
-    # ftz = 1000
-    # ttz = 0.5
-    # num_pairs = pairs.shape[0]
-    # matches = []
-    # for i in range(0, num_pairs):
-    #     if pairs[i][IDX_FREQ] != query[IDX_FREQ]:
-    #         continue
-    #     elif pairs[i][IDX_FREQ + 1] != query[IDX_FREQ + 1]:
-    #         continue
-    #     elif pairs[i][IDX_TDELTA] != query[IDX_TDELTA]:
-    #         continue
-    #     else:
-    #         matches.append(i)
-    # return np.asarray(matches, int)
+    t_delta_tol = 1
+    t_delta_low = np.where(pairs[:, PAIR_TDELTA_IDX] > query[PAIR_TDELTA_IDX] - t_delta_tol)[0]
+    t_delta_high = np.where(pairs[:, PAIR_TDELTA_IDX] < query[PAIR_TDELTA_IDX] + t_delta_tol)[0]
+    t_delta_matches = np.intersect1d(t_delta_low, t_delta_high)
+
+    t_pairs = pairs[t_delta_matches]
+    print(t_pairs.shape)
+
+    f1_tol = 1000
+    f1_low = np.where(t_pairs[:, FREQ_IDX] > query[FREQ_IDX] - f1_tol)
+    f1_high = np.where(t_pairs[:, FREQ_IDX] < query[FREQ_IDX] + f1_tol)
+    f1_matches = np.intersect1d(f1_low, f1_high)
+    f1_pairs = t_pairs[f1_matches]
+    print(f1_pairs.shape)
+
+    f2_tol = 1000
+    f2_low = np.where(f1_pairs[:, FREQ_IDX + 1] > query[FREQ_IDX + 1] - f2_tol)
+    f2_high = np.where(f1_pairs[:, FREQ_IDX + 1] < query[FREQ_IDX + 1] + f2_tol)
+    f2_matches = np.intersect1d(f2_low, f2_high)
+    tf2_pairs = f1_pairs[f2_matches]
+    print(tf2_pairs.shape)
+
+    pass
+    return 0, tf2_pairs.shape[0]
 
 
 # Read audio as a time-signal
@@ -198,20 +189,24 @@ def read_audio(filename):
 # Test basic Shazam-style identification
 sound, r = read_audio('./main/bin/unique/hello_train.wav')
 sound_peaks, sound_data = fingerprint(sound[:, 0], Fs=r)
+# sound_peaks, sound_data = fingerprint(sound, Fs=r)
 sample, r = read_audio('./main/bin/unique/hello_test.wav')
 sample_peaks, sample_data = fingerprint(sample[:, 0], Fs=r)
-# print(sample_data[55])
+# sample_peaks, sample_data = fingerprint(sample, Fs=r)
+
 plot_peaks(sound_peaks)
 plot_pairs(sound_peaks, sound_data, 100)
 plot_peaks(sample_peaks)
 plot_pairs(sample_peaks, sample_data, 40)
+#print(sound_data.shape)
+# print(sample_data.shape)
 
-print(sound_data.shape)
-print(sample_data.shape)
+print(sample_data[0].astype(int))
+match_vect = np.zeros(sample_data.shape[0])
+for i in range(0, sample_data.shape[0]):
+    _, match_vect[i] = search_for_pair(sound_data, sample_data[i])
+matches = np.average(match_vect)
 
-
-matches = search_for_pair(sound_data, sample_data[55])
-plt.show()
 # sample_length = 2
 # for i in range(3, 4):
 #     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
@@ -228,3 +223,25 @@ plt.show()
 #         print(matches.shape[1])
 # plt.show()
 
+# How does the length of the audio affect our number of matches?
+snip_end = 13
+snip_matches = np.zeros(6)
+snip_lengths = np.arange(13, 2, -2)
+# print(snip_lengths)
+# snip_lengths = np.insert(snip_lengths, 0, sound.shape[0] / r, axis=0)
+# print(snip_lengths)
+# snip_matches[0] = matches
+for i in range(0, snip_matches.shape[0] - 1):
+    snippet_peaks, snippet_data = fingerprint(sound[i*r: snip_end*r, 0], Fs=r)
+    for j in range(0, sample_data.shape[0]):
+        _, match_vect[j] = search_for_pair(snippet_data, sample_data[j])
+    snip_end = snip_end - 1
+    snip_matches[i] = np.average(match_vect)
+plt.figure()
+print(snip_lengths)
+print(snip_matches)
+plt.plot(snip_lengths, snip_matches, 'rx-')
+plt.xlabel("Snippet Length")
+plt.ylabel("Number of matches in database")
+plt.title("Number of matches for fixed snippet vs length of overall fingerprint track")
+plt.show()
