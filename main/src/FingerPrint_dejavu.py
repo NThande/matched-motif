@@ -160,44 +160,61 @@ def search_for_pair(pairs, query):
     t_delta_matches = np.intersect1d(t_delta_low, t_delta_high)
 
     t_pairs = pairs[t_delta_matches]
-    print(t_pairs.shape)
+    # print(t_pairs.shape)
 
     f1_tol = 1000
     f1_low = np.where(t_pairs[:, FREQ_IDX] > query[FREQ_IDX] - f1_tol)
     f1_high = np.where(t_pairs[:, FREQ_IDX] < query[FREQ_IDX] + f1_tol)
     f1_matches = np.intersect1d(f1_low, f1_high)
     f1_pairs = t_pairs[f1_matches]
-    print(f1_pairs.shape)
+    # print(f1_pairs.shape)
 
     f2_tol = 1000
     f2_low = np.where(f1_pairs[:, FREQ_IDX + 1] > query[FREQ_IDX + 1] - f2_tol)
     f2_high = np.where(f1_pairs[:, FREQ_IDX + 1] < query[FREQ_IDX + 1] + f2_tol)
     f2_matches = np.intersect1d(f2_low, f2_high)
     tf2_pairs = f1_pairs[f2_matches]
-    print(tf2_pairs.shape)
+    tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
+    # print(tf2_pairs.shape)
 
     pass
-    return 0, tf2_pairs.shape[0]
+    return tf2_idx, tf2_pairs.shape[0]
 
 
-# Read audio as a time-signal
+# Read audio as a time-signal. Mix stereo channels evenly if necessary
 def read_audio(filename):
     fs, sound = read(filename, mmap=False)
+    # print(sound.shape)
+    if len(sound.shape) > 1 and sound.shape[1] > 1:
+        num_channels = sound.shape[1]
+        mono_mix = np.zeros((num_channels, 1))
+        mono_mix.fill(1 / num_channels)
+        sound = sound @ mono_mix
+        sound = sound[:, 0]
+    # print(sound.shape)
     return sound, fs
 
 
 # Test basic Shazam-style identification
 sound, r = read_audio('./main/bin/unique/hello_train.wav')
-sound_peaks, sound_data = fingerprint(sound[:, 0], Fs=r)
+# sound, r = read_audio('./main/bin/t1.wav')
+
+# print(len(sound.shape))
+# sound = sound[:, 0]
+# print(sound.shape)
+# Rough monophonic mix
+
+sound_peaks, sound_data = fingerprint(sound, Fs=r)
 # sound_peaks, sound_data = fingerprint(sound, Fs=r)
 sample, r = read_audio('./main/bin/unique/hello_test.wav')
-sample_peaks, sample_data = fingerprint(sample[:, 0], Fs=r)
+# sample = sample[:, 0]
+sample_peaks, sample_data = fingerprint(sample, Fs=r)
 # sample_peaks, sample_data = fingerprint(sample, Fs=r)
 
 plot_peaks(sound_peaks)
 plot_pairs(sound_peaks, sound_data, 100)
-plot_peaks(sample_peaks)
-plot_pairs(sample_peaks, sample_data, 40)
+# plot_peaks(sample_peaks)
+# plot_pairs(sample_peaks, sample_data, 40)
 #print(sound_data.shape)
 # print(sample_data.shape)
 
@@ -231,10 +248,13 @@ snip_lengths = np.arange(13, 2, -2)
 # snip_lengths = np.insert(snip_lengths, 0, sound.shape[0] / r, axis=0)
 # print(snip_lengths)
 # snip_matches[0] = matches
+samp_hits = np.zeros(sound_data.shape[0])
 for i in range(0, snip_matches.shape[0] - 1):
-    snippet_peaks, snippet_data = fingerprint(sound[i*r: snip_end*r, 0], Fs=r)
+    snippet_peaks, snippet_data = fingerprint(sound[i*r: snip_end*r], Fs=r)
+    match_vect = np.zeros(sample_data.shape[0])
     for j in range(0, sample_data.shape[0]):
-        _, match_vect[j] = search_for_pair(snippet_data, sample_data[j])
+        match_idx, match_vect[j] = search_for_pair(snippet_data, sample_data[j])
+        samp_hits[match_idx] += 1
     snip_end = snip_end - 1
     snip_matches[i] = np.average(match_vect)
 plt.figure()
@@ -244,4 +264,49 @@ plt.plot(snip_lengths, snip_matches, 'rx-')
 plt.xlabel("Snippet Length")
 plt.ylabel("Number of matches in database")
 plt.title("Number of matches for fixed snippet vs length of overall fingerprint track")
+
+plt.figure()
+plt.plot(sound_data[:, PAIR_TIME_IDX], samp_hits, 'rx', label='Pair End Time')
+plt.legend()
+plt.xlabel("Time (s)")
+plt.ylabel("Number of matches")
+plt.title("Matches per pair using Fixed Sample")
+
+# plt.show()
+
+# Apply a sliding window on the sound itself
+sound_length = np.ceil(sound.shape[0] / r)
+snap_length = 2
+snap_num = int(sound_length - snap_length)
+snap_windows = np.arange(0, snap_num)
+snap_matches = np.zeros(snap_num)
+snap_hits = np.zeros(sound_data.shape[0])
+for i in range(0, snap_num):
+    snap_start = i * r
+    snap_end = (i + snap_length) * r
+    if snap_end > sound.shape[0] :
+        snap_end = sound.shape[0]
+    snap = sound[snap_start : snap_end]
+    snap_peaks, snap_data = fingerprint(snap, Fs=r)
+    match_vect = np.zeros(snap_data.shape[0])
+    for j in range(0, snap_data.shape[0]):
+        match_idx, match_vect[j] = search_for_pair(sound_data, snap_data[j])
+        snap_hits[match_idx] += 1
+    snap_matches[i] = np.average(match_vect)
+
+print(snap_hits)
+plt.figure()
+print(snap_matches)
+plt.plot(snap_windows, snap_matches, 'rx-')
+plt.xlabel("Snapshot Starting Point (s)")
+plt.ylabel("Number of matches in database")
+plt.title("Average number of matches for Fixed Length Sliding Windows")
+
+plt.figure()
+plt.plot(sound_data[:, PAIR_TIME_IDX], snap_hits, 'rx', label='Pair End Time')
+plt.legend()
+plt.xlabel("Time (s)")
+plt.ylabel("Number of matches")
+plt.title("Matches per pair using Fixed Length Sliding WIndow")
 plt.show()
+
