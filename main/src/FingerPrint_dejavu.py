@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
-from scipy.io.wavfile import read
+from scipy.io.wavfile import (read, write)
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import (generate_binary_structure,
                                       iterate_structure, binary_erosion)
@@ -154,25 +154,30 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
 
 # Query the pair table
 def search_for_pair(pairs, query):
-    t_delta_tol = 1
-    t_delta_low = np.where(pairs[:, PAIR_TDELTA_IDX] > query[PAIR_TDELTA_IDX] - t_delta_tol)[0]
-    t_delta_high = np.where(pairs[:, PAIR_TDELTA_IDX] < query[PAIR_TDELTA_IDX] + t_delta_tol)[0]
-    t_delta_matches = np.intersect1d(t_delta_low, t_delta_high)
+    t_delta_eq = np.where(pairs[:, PAIR_TDELTA_IDX] == query[PAIR_TDELTA_IDX])[0]
+    t_delta_matches = t_delta_eq
+    # t_delta_tol = 0.5
+    # t_delta_low = np.where(pairs[:, PAIR_TDELTA_IDX] > query[PAIR_TDELTA_IDX] - t_delta_tol)[0]
+    # t_delta_high = np.where(pairs[:, PAIR_TDELTA_IDX] < query[PAIR_TDELTA_IDX] + t_delta_tol)[0]
+    # t_delta_matches = np.intersect1d(t_delta_low, t_delta_high)
+    # t_delta_matches = np.asarray(t_delta_matches, int)
 
     t_pairs = pairs[t_delta_matches]
     # print(t_pairs.shape)
 
-    f1_tol = 1000
+    f1_tol = 50
     f1_low = np.where(t_pairs[:, FREQ_IDX] > query[FREQ_IDX] - f1_tol)
     f1_high = np.where(t_pairs[:, FREQ_IDX] < query[FREQ_IDX] + f1_tol)
     f1_matches = np.intersect1d(f1_low, f1_high)
     f1_pairs = t_pairs[f1_matches]
+    f1_matches = np.asarray(f1_matches, int)
     # print(f1_pairs.shape)
 
-    f2_tol = 1000
+    f2_tol = 50
     f2_low = np.where(f1_pairs[:, FREQ_IDX + 1] > query[FREQ_IDX + 1] - f2_tol)
     f2_high = np.where(f1_pairs[:, FREQ_IDX + 1] < query[FREQ_IDX + 1] + f2_tol)
     f2_matches = np.intersect1d(f2_low, f2_high)
+    f2_matches = np.asarray(f2_matches, int)
     tf2_pairs = f1_pairs[f2_matches]
     tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
     # print(tf2_pairs.shape)
@@ -302,11 +307,17 @@ plt.xlabel("Snapshot Starting Point (s)")
 plt.ylabel("Number of matches in database")
 plt.title("Average number of matches for Fixed Length Sliding Windows")
 
+max_samp_idx = np.argmax(snap_matches)
+max_samp_num = snap_windows[max_samp_idx]
+max_sample = sound[max_samp_num * r + 1: (max_samp_num + snap_length) * r]
+write('./main/bin/unique/test.wav', r, max_sample)
+
 plt.figure()
-plt.plot(sound_data[:, PAIR_TIME_IDX], snap_hits, 'rx', label='Pair End Time')
+plt.plot(sound_data[:, PAIR_TIME_IDX], snap_hits, 'rx', label='Pair Start Time')
+#plt.plot(sound_data[:, PAIR_TIME_IDX + 1], snap_hits, 'bx', label='Pair Start Time')
 plt.legend()
 plt.xlabel("Time (s)")
 plt.ylabel("Number of matches")
-plt.title("Matches per pair using Fixed Length Sliding WIndow")
+plt.title("Matches per pair using Fixed Length Sliding Window")
 plt.show()
 
