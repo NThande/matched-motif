@@ -19,305 +19,170 @@ DEFAULT_AMP_MIN = 10
 PEAK_NEIGHBORHOOD_SIZE = 20
 MIN_TIME_DELTA = 0
 MAX_TIME_DELTA = 200
-PEAK_SORT = True
 
 
-def transform_stft(samples, Fs=DEFAULT_FS,
-                wsize=DEFAULT_WINDOW_SIZE,
-                wratio=DEFAULT_OVERLAP_RATIO):
-    freqs, times, spect = signal.stft(
-        samples,
-        nfft=wsize,
-        fs=Fs,
-        window='hann',
-        nperseg=int(wsize),
-        noverlap=int(wsize * wratio))
-    return freqs, times, spect
+class FingerPrint:
+    def __init__(self, sound, Fs=DEFAULT_FS):
+        self.sound = sound
+        self.peaks = None
+        self.pairs = None
+        self.fs = Fs
+        self.hasFingerPrint = False
 
+    # FFT the channel, log transform output, find local maxima, then return
+    # locally sensitive hashes.
+    def generate_fingerprint(self, Fs=DEFAULT_FS,
+                    wsize=DEFAULT_WINDOW_SIZE,
+                    wratio=DEFAULT_OVERLAP_RATIO,
+                    fan_value=DEFAULT_FAN_VALUE,
+                    amp_min=DEFAULT_AMP_MIN):
 
-# FFT the channel, log transform output, find local maxima, then return
-# locally sensitive hashes.
-def fingerprint(samples, Fs=DEFAULT_FS,
-                wsize=DEFAULT_WINDOW_SIZE,
-                wratio=DEFAULT_OVERLAP_RATIO,
-                fan_value=DEFAULT_FAN_VALUE,
-                amp_min=DEFAULT_AMP_MIN):
+        # FFT the signal and extract frequency components
+        freqs, times, spect = self.transform_stft(self.sound, Fs, wsize, wratio)
 
-    # FFT the signal and extract frequency components
-    freqs, times, spect = signal.stft(
-        samples,
-        nfft=wsize,
-        fs=Fs,
-        window='hann',
-        nperseg=int(wsize),
-        noverlap=int(wsize * wratio))
+        spect[spect == -np.inf] = 0
+        spect = np.abs(spect)
+        # find local maxima
+        peaks_f, peaks_t = self.get_2d_peaks(spect, amp_min=amp_min)
+        peaks = np.zeros([len(peaks_f), 2])
+        peaks[:, 0] = freqs[peaks_f]
+        peaks[:, 1] = times[peaks_t]
+        self.peaks = peaks
+        pairs = self.generate_pairs(fan_value)
+        self.pairs = pairs
+        self.hasFingerPrint = True
 
-    # apply log transform since specgram() returns linear array
-    spect[spect == -np.inf] = 0
-    spect = np.abs(spect)
-    # print(spect.shape)
+        return self.peaks, self.pairs
 
-    # find local maxima
-    peaks_f, peaks_t = get_2d_peaks(spect, amp_min=amp_min)
-    peaks = np.zeros([len(peaks_f), 2])
-    peaks[:, 0] = freqs[peaks_f]
-    peaks[:, 1] = times[peaks_t]
+    # Generate peak-pairs based on locally-sensitive target zone
+    def generate_pairs(self, fan_value=DEFAULT_FAN_VALUE):
+        peaks = np.unique(self.peaks, axis=0)
+        pairs = np.zeros((0, 5))
 
-    pairs = generate_pairs(peaks, fan_value)
-    # plot_peaks(peaks)
-    # plot_pairs(peaks, pairs, 50)
+        for i in range(len(peaks)):
+            for j in range(1, fan_value):
+                if (i + j) < len(peaks):
 
-    return peaks, pairs
+                    freq1 = peaks[i, FREQ_IDX]
+                    freq2 = peaks[i + j, FREQ_IDX]
+                    t1 = peaks[i, PEAK_TIME_IDX]
+                    t2 = peaks[i + j, PEAK_TIME_IDX]
+                    t_delta = t2 - t1
 
+                    if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
+                        pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
 
-def plot_peaks(peaks):
-    plt.figure()
-    plt.plot(peaks[:, PEAK_TIME_IDX], peaks[:, FREQ_IDX], 'rx')
-    plt.title('STFT Peaks')
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-    plt.show(block=False)
+        pairs = np.unique(pairs, axis=0)
+        return pairs
 
+    # Query the pair table
+    def search_for_pair(self, query):
+        t_delta_tol = 0
+        t_delta_matches = search_col(self.pairs[:, PAIR_TDELTA_IDX], query[PAIR_TDELTA_IDX], t_delta_tol)
+        t_pairs = self.pairs[t_delta_matches]
 
-def plot_pairs(peaks, pairs, inc):
-    pair_mask = np.zeros(pairs.shape[0]).astype(int)
-    for i in range(0, pairs.shape[0]):
-        if i % inc == 0: pair_mask[i] = i
-    # print(pair_mask)
-    pruned = pairs[pair_mask, :]
-    # print(pruned.shape)
-    plt.figure()
-    plt.plot(peaks[:, PEAK_TIME_IDX], peaks[:, FREQ_IDX], 'rx')
-    plt.plot([pruned[:, PAIR_TIME_IDX], pruned[:, PAIR_TIME_IDX + 1]],
-             [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'b-')
+        f_tol = 50
+        f1_matches = search_col(t_pairs[:, FREQ_IDX], query[FREQ_IDX], f_tol)
+        f1_pairs = t_pairs[f1_matches]
 
-    plt.plot(pruned[:, PAIR_TIME_IDX], pruned[:, FREQ_IDX], 'kx')
-    plt.plot(pruned[:, PAIR_TIME_IDX + 1], pruned[:, FREQ_IDX + 1], 'k*')
-    plt.title('Peak Pairs')
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-    plt.show(block=False)
+        f2_matches = search_col(f1_pairs[:, FREQ_IDX + 1], query[FREQ_IDX + 1], f_tol)
+        f2_pairs = f1_pairs[f2_matches]
 
+        num_matches = f2_pairs.shape[0]
+        tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
+        return tf2_idx, num_matches
 
-def get_2d_peaks(spect, amp_min=DEFAULT_AMP_MIN):
-    # http://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.morphology.iterate_structure.html#scipy.ndimage.morphology.iterate_structure
-    struct = generate_binary_structure(2, 1)
-    neighborhood = iterate_structure(struct, PEAK_NEIGHBORHOOD_SIZE)
+    # Plot Spectogram peaks
+    def plot_peaks(self):
+        plt.figure()
+        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
+        plt.title('STFT Peaks')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+        plt.show(block=False)
 
-    # find local maxima using our fliter shape
-    local_max = maximum_filter(spect, footprint=neighborhood) == spect
-    background = (spect == 0)
-    eroded_background = binary_erosion(background, structure=neighborhood,
-                                       border_value=1)
+    # Plot spectogram peaks and one pair from every inc pairs
+    def plot_pairs(self, inc=50):
+        pair_mask = np.zeros(self.pairs.shape[0]).astype(int)
+        for i in range(0, self.pairs.shape[0]):
+            if i % inc == 0: pair_mask[i] = i
+        pruned = self.pairs[pair_mask, :]
 
-    # Boolean mask of arr2D with True at peaks
-    detected_peaks = local_max ^ eroded_background
+        plt.figure()
+        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
+        plt.plot([pruned[:, PAIR_TIME_IDX], pruned[:, PAIR_TIME_IDX + 1]],
+                 [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'b-')
 
-    # extract peaks
-    amps = spect[detected_peaks]
-    j, i = np.where(detected_peaks)
+        plt.plot(pruned[:, PAIR_TIME_IDX], pruned[:, FREQ_IDX], 'kx')
+        plt.plot(pruned[:, PAIR_TIME_IDX + 1], pruned[:, FREQ_IDX + 1], 'k*')
+        plt.title('Peak Pairs')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+        plt.show(block=False)
 
-    # filter peaks
-    amps = amps.flatten()
-    peaks = zip(i, j, amps)
-    peaks_filtered = [x for x in peaks if x[2] > amp_min]  # freq, time, amp
+    # Apply the Short-Time Fourier Transform
+    @staticmethod
+    def transform_stft(samples, fs=DEFAULT_FS,
+                       wsize=DEFAULT_WINDOW_SIZE,
+                       wratio=DEFAULT_OVERLAP_RATIO):
+        freqs, times, spect = signal.stft(
+            samples,
+            nfft=wsize,
+            fs=fs,
+            window='hann',
+            nperseg=int(wsize),
+            noverlap=int(wsize * wratio))
+        return freqs, times, spect
 
-    # get indices for frequency and time
-    frequency_idx = [x[1] for x in peaks_filtered]
-    time_idx = [x[0] for x in peaks_filtered]
+    # Get 2d peaks from a spectogram
+    @staticmethod
+    def get_2d_peaks(spect, amp_min=DEFAULT_AMP_MIN):
+        struct = generate_binary_structure(2, 1)
+        neighborhood = iterate_structure(struct, PEAK_NEIGHBORHOOD_SIZE)
 
-    return frequency_idx, time_idx
+        # find local maxima using our fliter shape
+        local_max = maximum_filter(spect, footprint=neighborhood) == spect
+        background = (spect == 0)
+        eroded_background = binary_erosion(background, structure=neighborhood,
+                                           border_value=1)
 
+        # Boolean mask of arr2D with True at peaks
+        detected_peaks = local_max ^ eroded_background
 
-def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
+        # extract peaks
+        amps = spect[detected_peaks]
+        j, i = np.where(detected_peaks)
 
-    peaks = np.unique(peaks, axis=0)
-    pairs = np.zeros((0, 5))
+        # filter peaks
+        amps = amps.flatten()
+        peaks = zip(i, j, amps)
+        peaks_filtered = [x for x in peaks if x[2] > amp_min]  # freq, time, amp
 
-    for i in range(len(peaks)):
-        for j in range(1, fan_value):
-            if (i + j) < len(peaks):
+        # get indices for frequency and time
+        frequency_idx = [x[1] for x in peaks_filtered]
+        time_idx = [x[0] for x in peaks_filtered]
 
-                freq1 = peaks[i, FREQ_IDX]
-                freq2 = peaks[i + j, FREQ_IDX]
-                t1 = peaks[i, PEAK_TIME_IDX]
-                t2 = peaks[i + j, PEAK_TIME_IDX]
-                t_delta = t2 - t1
-
-                if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
-                    pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
-
-    # print(pairs.shape)
-    pairs = np.unique(pairs, axis=0)
-    return pairs
-
-
-# Query the pair table
-def search_for_pair(pairs, query):
-    t_delta_eq = np.where(pairs[:, PAIR_TDELTA_IDX] == query[PAIR_TDELTA_IDX])[0]
-    t_delta_matches = t_delta_eq
-    # t_delta_tol = 0.5
-    # t_delta_low = np.where(pairs[:, PAIR_TDELTA_IDX] > query[PAIR_TDELTA_IDX] - t_delta_tol)[0]
-    # t_delta_high = np.where(pairs[:, PAIR_TDELTA_IDX] < query[PAIR_TDELTA_IDX] + t_delta_tol)[0]
-    # t_delta_matches = np.intersect1d(t_delta_low, t_delta_high)
-    # t_delta_matches = np.asarray(t_delta_matches, int)
-
-    t_pairs = pairs[t_delta_matches]
-    # print(t_pairs.shape)
-
-    f1_tol = 50
-    f1_low = np.where(t_pairs[:, FREQ_IDX] > query[FREQ_IDX] - f1_tol)
-    f1_high = np.where(t_pairs[:, FREQ_IDX] < query[FREQ_IDX] + f1_tol)
-    f1_matches = np.intersect1d(f1_low, f1_high)
-    f1_pairs = t_pairs[f1_matches]
-    f1_matches = np.asarray(f1_matches, int)
-    # print(f1_pairs.shape)
-
-    f2_tol = 50
-    f2_low = np.where(f1_pairs[:, FREQ_IDX + 1] > query[FREQ_IDX + 1] - f2_tol)
-    f2_high = np.where(f1_pairs[:, FREQ_IDX + 1] < query[FREQ_IDX + 1] + f2_tol)
-    f2_matches = np.intersect1d(f2_low, f2_high)
-    f2_matches = np.asarray(f2_matches, int)
-    tf2_pairs = f1_pairs[f2_matches]
-    tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
-    # print(tf2_pairs.shape)
-
-    pass
-    return tf2_idx, tf2_pairs.shape[0]
+        return frequency_idx, time_idx
 
 
 # Read audio as a time-signal. Mix stereo channels evenly if necessary
 def read_audio(filename):
     fs, sound = read(filename, mmap=False)
-    # print(sound.shape)
     if len(sound.shape) > 1 and sound.shape[1] > 1:
         num_channels = sound.shape[1]
         mono_mix = np.zeros((num_channels, 1))
         mono_mix.fill(1 / num_channels)
         sound = sound @ mono_mix
         sound = sound[:, 0]
-    # print(sound.shape)
     return sound, fs
 
 
-# Test basic Shazam-style identification
-sound, r = read_audio('./main/bin/unique/hello_train.wav')
-# sound, r = read_audio('./main/bin/t1.wav')
-
-# print(len(sound.shape))
-# sound = sound[:, 0]
-# print(sound.shape)
-# Rough monophonic mix
-
-sound_peaks, sound_data = fingerprint(sound, Fs=r)
-# sound_peaks, sound_data = fingerprint(sound, Fs=r)
-sample, r = read_audio('./main/bin/unique/hello_test.wav')
-# sample = sample[:, 0]
-sample_peaks, sample_data = fingerprint(sample, Fs=r)
-# sample_peaks, sample_data = fingerprint(sample, Fs=r)
-
-plot_peaks(sound_peaks)
-plot_pairs(sound_peaks, sound_data, 100)
-# plot_peaks(sample_peaks)
-# plot_pairs(sample_peaks, sample_data, 40)
-#print(sound_data.shape)
-# print(sample_data.shape)
-
-print(sample_data[0].astype(int))
-match_vect = np.zeros(sample_data.shape[0])
-for i in range(0, sample_data.shape[0]):
-    _, match_vect[i] = search_for_pair(sound_data, sample_data[i])
-matches = np.average(match_vect)
-
-# sample_length = 2
-# for i in range(3, 4):
-#     sound, r = read_audio('./main/bin/t{}.wav'.format(i + 1))
-#     sound_data = fingerprint(sound, r)
-#     sample = sound[0:(r * sample_length)]
-#     sample_data = fingerprint(sample, r)
-#     print(sample_data.shape)
-#     print(sound_data.shape)
-#     print(sample_data[0])
-#     sample_matches = np.zeros([sample_data.shape[0], 2])
-#     sample_matches[:, 0] = np.arange(0, sample_data.shape[0])
-#     for sample_pair in sample_data:
-#         matches = search_for_pair(sound_data, sample_pair)
-#         print(matches.shape[1])
-# plt.show()
-
-# How does the length of the audio affect our number of matches?
-snip_end = 13
-snip_matches = np.zeros(6)
-snip_lengths = np.arange(13, 2, -2)
-# print(snip_lengths)
-# snip_lengths = np.insert(snip_lengths, 0, sound.shape[0] / r, axis=0)
-# print(snip_lengths)
-# snip_matches[0] = matches
-samp_hits = np.zeros(sound_data.shape[0])
-for i in range(0, snip_matches.shape[0] - 1):
-    snippet_peaks, snippet_data = fingerprint(sound[i*r: snip_end*r], Fs=r)
-    match_vect = np.zeros(sample_data.shape[0])
-    for j in range(0, sample_data.shape[0]):
-        match_idx, match_vect[j] = search_for_pair(snippet_data, sample_data[j])
-        samp_hits[match_idx] += 1
-    snip_end = snip_end - 1
-    snip_matches[i] = np.average(match_vect)
-plt.figure()
-print(snip_lengths)
-print(snip_matches)
-plt.plot(snip_lengths, snip_matches, 'rx-')
-plt.xlabel("Snippet Length")
-plt.ylabel("Number of matches in database")
-plt.title("Number of matches for fixed snippet vs length of overall fingerprint track")
-
-plt.figure()
-plt.plot(sound_data[:, PAIR_TIME_IDX], samp_hits, 'rx', label='Pair End Time')
-plt.legend()
-plt.xlabel("Time (s)")
-plt.ylabel("Number of matches")
-plt.title("Matches per pair using Fixed Sample")
-
-# plt.show()
-
-# Apply a sliding window on the sound itself
-sound_length = np.ceil(sound.shape[0] / r)
-snap_length = 2
-snap_num = int(sound_length - snap_length)
-snap_windows = np.arange(0, snap_num)
-snap_matches = np.zeros(snap_num)
-snap_hits = np.zeros(sound_data.shape[0])
-for i in range(0, snap_num):
-    snap_start = i * r
-    snap_end = (i + snap_length) * r
-    if snap_end > sound.shape[0] :
-        snap_end = sound.shape[0]
-    snap = sound[snap_start : snap_end]
-    snap_peaks, snap_data = fingerprint(snap, Fs=r)
-    match_vect = np.zeros(snap_data.shape[0])
-    for j in range(0, snap_data.shape[0]):
-        match_idx, match_vect[j] = search_for_pair(sound_data, snap_data[j])
-        snap_hits[match_idx] += 1
-    snap_matches[i] = np.average(match_vect)
-
-print(snap_hits)
-plt.figure()
-print(snap_matches)
-plt.plot(snap_windows, snap_matches, 'rx-')
-plt.xlabel("Snapshot Starting Point (s)")
-plt.ylabel("Number of matches in database")
-plt.title("Average number of matches for Fixed Length Sliding Windows")
-
-max_samp_idx = np.argmax(snap_matches)
-max_samp_num = snap_windows[max_samp_idx]
-max_sample = sound[max_samp_num * r + 1: (max_samp_num + snap_length) * r]
-write('./main/bin/unique/test.wav', r, max_sample)
-
-plt.figure()
-plt.plot(sound_data[:, PAIR_TIME_IDX], snap_hits, 'rx', label='Pair Start Time')
-#plt.plot(sound_data[:, PAIR_TIME_IDX + 1], snap_hits, 'bx', label='Pair Start Time')
-plt.legend()
-plt.xlabel("Time (s)")
-plt.ylabel("Number of matches")
-plt.title("Matches per pair using Fixed Length Sliding Window")
-plt.show()
-
+# Search a single column for data within the tolerance
+def search_col(data, query, tol=0):
+    if tol == 0:
+        match_idx = np.asarray(np.where(data == query), int)[0]
+    else:
+        low = np.where(data > query - tol)[0]
+        high = np.where(data < query + tol)[0]
+        match_idx = np.asarray(np.intersect1d(low, high), int)
+    return match_idx
