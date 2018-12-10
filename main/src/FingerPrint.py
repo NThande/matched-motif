@@ -55,8 +55,14 @@ class FingerPrint:
         return self.peaks, self.pairs
 
     # Generate peak-pairs based on locally-sensitive target zone
-    def generate_pairs(self, fan_value=DEFAULT_FAN_VALUE):
+    def generate_pairs(self, fan_value=DEFAULT_FAN_VALUE, tol=0):
         peaks = np.unique(self.peaks, axis=0)
+        # if peaks.shape[0] <= 1:
+        #     print("Too few peaks to pair: {}".format(peaks.shape[0]))
+        #     return np.asarray([peaks[0, FREQ_IDX],
+        #                        peaks[0, FREQ_IDX],
+        #                        peaks[0, PEAK_TIME_IDX],
+        #                        peaks[0, PEAK_TIME_IDX], 0])
         pairs = np.zeros((0, 5))
 
         for i in range(len(peaks)):
@@ -69,15 +75,19 @@ class FingerPrint:
                     t2 = peaks[i + j, PEAK_TIME_IDX]
                     t_delta = t2 - t1
 
-                    if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
+                    if MIN_TIME_DELTA - tol <= t_delta <= MAX_TIME_DELTA + tol:
                         pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
 
+        if pairs.shape[0] == 0:
+            print("No pairs found, only {} peaks".format(peaks.shape[0]))
+            self.generate_pairs(fan_value, tol + 1)
+            return pairs
         pairs = np.unique(pairs, axis=0)
         return pairs
 
     # Query the pair table
     def search_for_pair(self, query):
-        t_delta_tol = 0
+        t_delta_tol = 10
         t_delta_matches = search_col(self.pairs[:, PAIR_TDELTA_IDX], query[PAIR_TDELTA_IDX], t_delta_tol)
         t_pairs = self.pairs[t_delta_matches]
 
@@ -94,6 +104,8 @@ class FingerPrint:
 
     # Plot Spectogram peaks
     def plot_peaks(self):
+        if self.peaks is None:
+            return
         plt.figure()
         plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
         plt.title('STFT Peaks')
@@ -103,6 +115,8 @@ class FingerPrint:
 
     # Plot spectogram peaks and one pair from every inc pairs
     def plot_pairs(self, inc=50):
+        if self.pairs is None:
+            return
         pair_mask = np.zeros(self.pairs.shape[0]).astype(int)
         for i in range(0, self.pairs.shape[0]):
             if i % inc == 0: pair_mask[i] = i
@@ -124,7 +138,8 @@ class FingerPrint:
     @staticmethod
     def transform_stft(samples, fs=DEFAULT_FS,
                        wsize=DEFAULT_WINDOW_SIZE,
-                       wratio=DEFAULT_OVERLAP_RATIO):
+                       wratio=DEFAULT_OVERLAP_RATIO,
+                       to_plot=False):
         freqs, times, spect = signal.stft(
             samples,
             nfft=wsize,

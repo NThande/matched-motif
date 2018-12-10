@@ -1,41 +1,30 @@
-import FingerPrint as fp
-import matplotlib as plt
 import numpy as np
-
-FREQ_IDX = 0
-PEAK_TIME_IDX = 1
-PAIR_TIME_IDX = 2
-PAIR_TDELTA_IDX = 4
-
-# Test basic Shazam-style identification
-sound, r = fp.read_audio('./main/bin/unique/hello_train.wav')
-sound_peaks, sound_data = fp.fingerprint(sound, Fs=r)
+import FingerPrint as fp
 
 
 # Basic test
-audio, r = fp.read_audio('./main/bin/unique/hello_train.wav')
-audio_fp = fp.FingerPrint(audio, r)
-audio_fp.generate_fingerprint()
-audio_fp.plot_peaks()
-audio_fp.plot_pairs()
-_, num_self_matches = audio_fp.search_for_pair(audio_fp.pairs[1, :])
-print("Matches for Pair 0: ", num_self_matches)
-plt.show()
+def basic_fingerprint_test(filename):
+    audio, r = fp.read_audio(filename)
+    audio_fp = fp.FingerPrint(audio, r)
+    audio_fp.generate_fingerprint()
+    audio_fp.plot_peaks()
+    audio_fp.plot_pairs()
+    _, num_self_matches = audio_fp.search_for_pair(audio_fp.pairs[1, :])
+    return num_self_matches
 
 
+def test_find_self(sample_length, t_start, t_end):
+    self_match_ratio = np.zeros(t_end - t_start)
+    count = 0
+    for i in range(t_start, t_end):
+        sound, r = fp.read_audio('./main/bin/t{}.wav'.format(i + 1))
+        sound_fp = fp.FingerPrint(sound, r)
+        sample = sound[0:(r * sample_length)]
+        sample_fp = fp.FingerPrint(sample, r)
 
-sample_length = 2
-for i in range(3, 4):
-    sound, r = fp.read_audio('./main/bin/t{}.wav'.format(i + 1))
-    sound_data = fp.fingerprint(sound, r)
-    sample = sound[0:(r * sample_length)]
-    sample_data = fp.fingerprint(sample, r)
-    print(sample_data.shape)
-    print(sound_data.shape)
-    print(sample_data[0])
-    sample_matches = np.zeros([sample_data.shape[0], 2])
-    sample_matches[:, 0] = np.arange(0, sample_data.shape[0])
-    for sample_pair in sample_data:
-        matches = fp.search_for_pair(sound_data, sample_pair)
-        print(matches.shape[1])
-plt.show()
+        for sample_pair in sample_fp.pairs:
+            _, matches = sound_fp.search_for_pair(sample_pair)
+            self_match_ratio[count] += matches
+        self_match_ratio[count] = self_match_ratio[count] / sample_fp.pairs.shape[0]
+        count += 1
+    return self_match_ratio
