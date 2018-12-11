@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
-from scipy.io.wavfile import (read, write)
+from scipy.io.wavfile import read
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import (generate_binary_structure,
                                       iterate_structure, binary_erosion)
@@ -32,24 +32,37 @@ class FingerPrint:
     # FFT the channel, log transform output, find local maxima, then return
     # locally sensitive hashes.
     def generate_fingerprint(self, Fs=DEFAULT_FS,
-                    wsize=DEFAULT_WINDOW_SIZE,
-                    wratio=DEFAULT_OVERLAP_RATIO,
-                    fan_value=DEFAULT_FAN_VALUE,
-                    amp_min=DEFAULT_AMP_MIN):
-
+                             wsize=DEFAULT_WINDOW_SIZE,
+                             wratio=DEFAULT_OVERLAP_RATIO,
+                             fan_value=DEFAULT_FAN_VALUE,
+                             amp_min=DEFAULT_AMP_MIN,
+                             to_plot=False):
+        self.hasFingerPrint = False
         # FFT the signal and extract frequency components
-        freqs, times, spect = self.transform_stft(self.sound, Fs, wsize, wratio)
+        frequencies, times, spectrogram = transform_stft(self.sound, Fs, wsize, wratio)
+        if to_plot:
+            plt.figure()
+            plt.pcolormesh(times, frequencies, np.abs(spectrogram), vmin=0, vmax=5)
+            plt.title('STFT Magnitude')
+            plt.ylabel('Frequency [Hz]')
+            plt.xlabel('Time [sec]')
+            plt.show(block=False)
 
-        spect[spect == -np.inf] = 0
-        spect = np.abs(spect)
+        spectrogram[spectrogram == -np.inf] = 0
+        spectrogram = np.abs(spectrogram)
+
         # find local maxima
-        peaks_f, peaks_t = self.get_2d_peaks(spect, amp_min=amp_min)
+        peaks_f, peaks_t = self.get_2d_peaks(spectrogram, amp_min=amp_min)
         peaks = np.zeros([len(peaks_f), 2])
-        peaks[:, 0] = freqs[peaks_f]
+        peaks[:, 0] = frequencies[peaks_f]
         peaks[:, 1] = times[peaks_t]
         self.peaks = peaks
+        if to_plot:
+            self.plot_peaks()
         pairs = self.generate_pairs(fan_value)
         self.pairs = pairs
+        if to_plot:
+            self.plot_pairs()
         self.hasFingerPrint = True
 
         return self.peaks, self.pairs
@@ -79,7 +92,7 @@ class FingerPrint:
                         pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
 
         if pairs.shape[0] == 0:
-            print("No pairs found, only {} peaks".format(peaks.shape[0]))
+            print("No pairs found, only {} peaks".format(peaks.shape[0] - 1))
             self.generate_pairs(fan_value, tol + 1)
             return pairs
         pairs = np.unique(pairs, axis=0)
@@ -102,7 +115,7 @@ class FingerPrint:
         tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
         return tf2_idx, num_matches
 
-    # Plot Spectogram peaks
+    # Plot Spectrogram peaks
     def plot_peaks(self):
         if self.peaks is None:
             return
@@ -134,28 +147,13 @@ class FingerPrint:
         plt.xlabel('Time [sec]')
         plt.show(block=False)
 
-    # Apply the Short-Time Fourier Transform
-    @staticmethod
-    def transform_stft(samples, fs=DEFAULT_FS,
-                       wsize=DEFAULT_WINDOW_SIZE,
-                       wratio=DEFAULT_OVERLAP_RATIO,
-                       to_plot=False):
-        freqs, times, spect = signal.stft(
-            samples,
-            nfft=wsize,
-            fs=fs,
-            window='hann',
-            nperseg=int(wsize),
-            noverlap=int(wsize * wratio))
-        return freqs, times, spect
-
-    # Get 2d peaks from a spectogram
+    # Get 2d peaks from a spectrogram
     @staticmethod
     def get_2d_peaks(spect, amp_min=DEFAULT_AMP_MIN):
         struct = generate_binary_structure(2, 1)
         neighborhood = iterate_structure(struct, PEAK_NEIGHBORHOOD_SIZE)
 
-        # find local maxima using our fliter shape
+        # find local maxima using our filter shape
         local_max = maximum_filter(spect, footprint=neighborhood) == spect
         background = (spect == 0)
         eroded_background = binary_erosion(background, structure=neighborhood,
@@ -172,6 +170,8 @@ class FingerPrint:
         amps = amps.flatten()
         peaks = zip(i, j, amps)
         peaks_filtered = [x for x in peaks if x[2] > amp_min]  # freq, time, amp
+        if len(peaks_filtered) <= 1:
+            print("Only {} peaks found for {} amp min!".format(len(peaks_filtered), amp_min))
 
         # get indices for frequency and time
         frequency_idx = [x[1] for x in peaks_filtered]
@@ -190,6 +190,20 @@ def read_audio(filename):
         sound = sound @ mono_mix
         sound = sound[:, 0]
     return sound, fs
+
+
+# Apply the Short-Time Fourier Transform
+def transform_stft(samples, fs=DEFAULT_FS,
+                   wsize=DEFAULT_WINDOW_SIZE,
+                   wratio=DEFAULT_OVERLAP_RATIO):
+    freqs, times, spect = signal.stft(
+        samples,
+        nfft=wsize,
+        fs=fs,
+        window='hann',
+        nperseg=int(wsize),
+        noverlap=int(wsize * wratio))
+    return freqs, times, spect
 
 
 # Search a single column for data within the tolerance
