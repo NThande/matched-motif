@@ -1,4 +1,6 @@
 *.idea
 *.wav
+*.xlsx
+*.csv
 bin/*
 *.pyc

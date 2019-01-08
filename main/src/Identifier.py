@@ -2,7 +2,7 @@ from scipy.io.wavfile import write
 import FingerPrint as finPrint
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pandas as pd
 
 # Test basic Shazam-style identification
 def basic_search(song_fp, sample_fp):
@@ -19,10 +19,10 @@ def shrinking_search(song_fp, sample_fp, start_time, center_time, to_plot=True):
     r = song_fp.fs
 
     snip_start = start_time
-    if (snip_start < 0):
+    if snip_start < 0:
         snip_start = 0
     snip_end = 2 * center_time - start_time
-    if (snip_end > sound.shape[0] / r):
+    if snip_end > sound.shape[0] / r:
         snip_end = sound.shape[0] / r
 
     samp_hits = np.zeros(song_fp.pairs.shape[0])
@@ -63,20 +63,23 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
     snap_windows = np.arange(0, snap_num)
     snap_matches = np.zeros(snap_num)
     snap_hits = np.zeros(song_fp.pairs.shape[0])
+
     for i in range(0, snap_num):
         snap_start = int(i * r)
         snap_end = int((i + window_length) * r)
+
         if snap_end > sound.shape[0]:
             snap_end = sound.shape[0]
         snap = sound[snap_start: snap_end]
         snap_fp = finPrint.FingerPrint(snap, r)
         snap_peaks, snap_pairs = snap_fp.generate_fingerprint()
         match_vect = np.zeros(snap_pairs.shape[0])
+
         for j in range(0, snap_pairs.shape[0]):
             match_idx, match_vect[j] = song_fp.search_for_pair(snap_pairs[j])
             snap_hits[match_idx] += 1
         snap_matches[i] = np.average(match_vect)
-
+        print("Completed Window {} / {}".format(i, snap_num))
     max_samp_idx = np.argmax(snap_matches)
     max_samp_num = snap_windows[max_samp_idx]
     max_sample = sound[max_samp_num * r + 1: (max_samp_num * r) + int((window_length) * r)]
@@ -88,30 +91,33 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
         plt.ylabel("Number of matches in database")
         plt.title("Average number of matches for Fixed Length = {} Sliding Window".format(window_length))
 
-        plt.figure()
-        plt.plot(song_fp.pairs[:, finPrint.PAIR_TIME_IDX], snap_hits, 'rx', label='Pair Start Time')
-        plt.legend()
-        plt.xlabel("Time (s)")
-        plt.ylabel("Number of matches")
-        plt.title("Matches per pair using Fixed Length = {} Sliding Window".format(window_length))
-        plt.show(block=False)
+        # plt.figure()
+        # plt.plot(song_fp.pairs[:, finPrint.PAIR_TIME_IDX], snap_hits, 'rx', label='Pair Start Time')
+        # plt.legend()
+        # plt.xlabel("Time (s)")
+        # plt.ylabel("Number of matches")
+        # plt.title("Matches per pair using Fixed Length = {} Sliding Window".format(window_length))
+        # plt.show(block=False)
 
     if write_name is not None:
         write(write_name, r, max_sample)
 
     if get_info:
         return max_sample, snap_windows, snap_matches, snap_hits
+    print("Auto Window complete")
     return max_sample
 
 
 path = './main/bin/unique/'
 file_type = '.wav'
-audio_file = 't3_train'
-snapshot_file = 't3_test'
+audio_file = 'hello_train'
+snapshot_file = 'hello_test'
+label_file = '_labels.csv'
 
 audio, r = finPrint.read_audio(path + audio_file + file_type)
 audio_fp = finPrint.FingerPrint(audio, r)
 audio_fp.generate_fingerprint()
+audio_labels = pd.read_csv(path + audio_file + label_file)
 
 snapshot, r = finPrint.read_audio(path + snapshot_file + file_type)
 snapshot_fp = finPrint.FingerPrint(snapshot, r)
@@ -120,20 +126,44 @@ snapshot_fp.generate_fingerprint()
 # print("Average matches for Snapshot: ", basic_search(audio_fp, snapshot_fp))
 # shrinking_search(song_fp=audio_fp, sample_fp=snapshot_fp, start_time=0, center_time=7)
 
-sliding_lengths = np.arange(1, 2.0, 0.33)
+# test_len = 2.0
+# sound = audio_fp.sound
+# r = audio_fp.fs
+# song_length = np.ceil(sound.shape[0] / r)
+# snap_num = int(song_length - test_len)
+# print('Number of windows: ', snap_num)
+# snap_windows = np.arange(0, snap_num)
+# snap_matches = np.zeros(snap_num)
+# snap_hits = np.zeros(audio_fp.pairs.shape[0])
+
+# audio_fp.generate_fingerprint(to_plot=True, plot_inc=20)
+# for i in range(8, 9):
+#     snap_start = int(i * r)
+#     snap_end = int((i + test_len) * r)
+#
+#     if snap_end > sound.shape[0]:
+#         snap_end = sound.shape[0]
+#     snap = sound[snap_start: snap_end]
+#     snap_fp = finPrint.FingerPrint(snap, r)
+#     snap_peaks, snap_pairs = snap_fp.generate_fingerprint(to_plot=True, plot_inc=1)
+#     match_vect = np.zeros(snap_pairs.shape[0])
+# plt.show()
+#
+sliding_lengths = np.arange(1, 3.01, 1.0)
 windows_coll = []
 matches_coll = []
 hits_coll = []
 
-for i in sliding_lengths:
-    file_name = path + audio_file + '_sample_{}_'.format(i) + file_type
+for i in range(0, sliding_lengths.shape[0]):
+    window_len = sliding_lengths[i]
+    file_name = path + audio_file + '_sample_{}_'.format(window_len) + file_type
     _, windows, matches, hits = autowindow_search(song_fp=audio_fp,
-                                                  window_length=i,
+                                                  window_length=window_len,
                                                   write_name=None,
                                                   to_plot=False,
                                                   get_info=True)
-    matches = matches / i
-    hits = hits / i
+    matches = matches / window_len
+    hits = hits / window_len
     windows_coll.append(windows)
     matches_coll.append(matches)
     hits_coll.append(hits)
@@ -141,19 +171,29 @@ for i in sliding_lengths:
 plt.figure()
 plt.title("Average Matches per Window using Different Sliding Window Lengths")
 plt.xlabel("Window Starting Point (s)")
-plt.ylabel("Average Number of Matches")
+plt.ylabel("Average Number of Matches (Normalized)")
 count = 0
 for i in range(0, len(windows_coll)):
     plt.plot(windows_coll[i], matches_coll[i], 'C{}-'.format(i), label=str(sliding_lengths[i]))
-plt.legend()
-plt.show(block=False)
 
-plt.figure()
-plt.title("Matches per pair using Different Sliding Window Lengths")
-plt.xlabel("Pair Start Time (s)")
-plt.ylabel("Number of matches in database")
-count = 0
-for i in range(0, len(hits_coll)):
-    plt.plot(audio_fp.pairs[:, finPrint.PAIR_TIME_IDX], hits_coll[i], 'C{}x'.format(i), label=str(sliding_lengths[i]))
+if audio_labels is not None:
+    labels = audio_labels
+    axes = plt.gca()
+    y_max = axes.get_ylim()[1]
+    axes.set_xlim(axes.get_xlim()[0] - 1, axes.get_xlim()[1] + 1)
+    for i in range(0, labels.shape[0]):
+        plt.axvline(labels.Time[i], color=labels.Color[i], linestyle='-.')
+        plt.annotate(labels.Event[i], xy=(labels.Time[i], y_max),
+                     xytext=(5, -10), textcoords='offset points', rotation=45)
 plt.legend()
+# plt.show(block=False)
+#
+# plt.figure()
+# plt.title("Matches per pair using Different Sliding Window Lengths")
+# plt.xlabel("Pair Start Time (s)")
+# plt.ylabel("Number of matches in database (Normalized)")
+# count = 0
+# for i in range(0, len(hits_coll)):
+#     plt.plot(audio_fp.pairs[:, finPrint.PAIR_TIME_IDX], hits_coll[i], 'C{}x'.format(i), label=str(sliding_lengths[i]))
+# plt.legend()
 plt.show()

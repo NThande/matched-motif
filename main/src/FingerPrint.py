@@ -36,17 +36,13 @@ class FingerPrint:
                              wratio=DEFAULT_OVERLAP_RATIO,
                              fan_value=DEFAULT_FAN_VALUE,
                              amp_min=DEFAULT_AMP_MIN,
+                             plot_inc=50,
                              to_plot=False):
         self.hasFingerPrint = False
         # FFT the signal and extract frequency components
         frequencies, times, spectrogram = transform_stft(self.sound, Fs, wsize, wratio)
         if to_plot:
-            plt.figure()
-            plt.pcolormesh(times, frequencies, np.abs(spectrogram), vmin=0, vmax=5)
-            plt.title('STFT Magnitude')
-            plt.ylabel('Frequency [Hz]')
-            plt.xlabel('Time [sec]')
-            plt.show(block=False)
+            plot_stft(frequencies, times, spectrogram)
 
         spectrogram[spectrogram == -np.inf] = 0
         spectrogram = np.abs(spectrogram)
@@ -62,20 +58,15 @@ class FingerPrint:
         pairs = self.generate_pairs(fan_value)
         self.pairs = pairs
         if to_plot:
-            self.plot_pairs()
+            self.plot_pairs(plot_inc)
         self.hasFingerPrint = True
-
+        if to_plot:
+            self.plot_spect_peaks_pairs(frequencies, times, spectrogram, plot_inc)
         return self.peaks, self.pairs
 
     # Generate peak-pairs based on locally-sensitive target zone
     def generate_pairs(self, fan_value=DEFAULT_FAN_VALUE, tol=0):
         peaks = np.unique(self.peaks, axis=0)
-        # if peaks.shape[0] <= 1:
-        #     print("Too few peaks to pair: {}".format(peaks.shape[0]))
-        #     return np.asarray([peaks[0, FREQ_IDX],
-        #                        peaks[0, FREQ_IDX],
-        #                        peaks[0, PEAK_TIME_IDX],
-        #                        peaks[0, PEAK_TIME_IDX], 0])
         pairs = np.zeros((0, 5))
 
         for i in range(len(peaks)):
@@ -91,10 +82,11 @@ class FingerPrint:
                     if MIN_TIME_DELTA - tol <= t_delta <= MAX_TIME_DELTA + tol:
                         pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
 
+        # Return dummy entry
         if pairs.shape[0] == 0:
-            print("No pairs found, only {} peaks".format(peaks.shape[0] - 1))
-            self.generate_pairs(fan_value, tol + 1)
-            return pairs
+            print("No pairs found, only {} peaks".format(peaks.shape[0]))
+            # self.generate_pairs(fan_value, tol + 1)
+            return np.zeros((1, 5))
         pairs = np.unique(pairs, axis=0)
         return pairs
 
@@ -145,6 +137,30 @@ class FingerPrint:
         plt.title('Peak Pairs')
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [sec]')
+        plt.show(block=False)
+
+    # Plot everything on the same plot
+    def plot_spect_peaks_pairs(self, freqs, times, spectrogram, inc=50):
+        plt.figure()
+        plt.pcolormesh(times, freqs, np.abs(spectrogram), vmin=0, vmax=5)
+        plt.title('STFT Magnitude')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+
+        if self.peaks is None:
+            return
+        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'bx')
+
+        if self.pairs is None:
+            return
+        pair_mask = np.zeros(self.pairs.shape[0]).astype(int)
+        for i in range(0, self.pairs.shape[0]):
+            if i % inc == 0: pair_mask[i] = i
+        pruned = self.pairs[pair_mask, :]
+
+        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
+        plt.plot([pruned[:, PAIR_TIME_IDX], pruned[:, PAIR_TIME_IDX + 1]],
+                 [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'y-')
         plt.show(block=False)
 
     # Get 2d peaks from a spectrogram
@@ -204,6 +220,15 @@ def transform_stft(samples, fs=DEFAULT_FS,
         nperseg=int(wsize),
         noverlap=int(wsize * wratio))
     return freqs, times, spect
+
+
+def plot_stft(freq, time, spectrogram):
+    plt.figure()
+    plt.pcolormesh(time, freq, np.abs(spectrogram), vmin=0, vmax=5)
+    plt.title('STFT Magnitude')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time [sec]')
+    plt.show(block=False)
 
 
 # Search a single column for data within the tolerance
