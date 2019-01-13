@@ -28,7 +28,7 @@ def matched_filter(song, fs, window_length=2, write_name=None, to_plot=True, get
         while k + snap_length < num_samples:
             sound_snap = sound[k : k + snap_length]
             snap_matches[i] += np.dot(snap.T, sound_snap)
-            k += snap_length
+            k += r
         # snap_fp = finPrint.FingerPrint(snap, r)
         # snap_peaks, snap_pairs = snap_fp.generate_fingerprint()
         # match_vect = np.zeros(snap_pairs.shape[0])
@@ -46,18 +46,21 @@ def matched_filter(song, fs, window_length=2, write_name=None, to_plot=True, get
     if to_plot:
         plt.figure()
         plt.plot(snap_windows, snap_matches, 'rx-')
-        plt.xlabel("Snapshot Starting Point (s)")
-        plt.ylabel("Sum of Window Matched Filters")
-        plt.title("Matched Filter Sliding Window".format(window_length))
+        plt.xlabel("Snippet Starting Point (s)")
+        plt.ylabel("Snippet Similarity")
+        plt.title("Self-Similarity Using a Matched Filter".format(window_length))
 
         if labels is not None:
             axes = plt.gca()
             y_max = axes.get_ylim()[1]
             axes.set_xlim(axes.get_xlim()[0] - 1, axes.get_xlim()[1] + 1)
-            for i in range(0, labels.shape[0]):
-                plt.axvline(labels.Time[i], color=labels.Color[i], linestyle='-.')
-                plt.annotate(labels.Event[i], xy=(labels.Time[i], y_max),
-                             xytext=(5, -10), textcoords='offset points', rotation=45)
+            for i in range(0, labels.shape[0] - 1):
+                plt.axvspan(labels.Time[i], labels.Time[i+1], alpha=0.2,  color=labels.Color[i],
+                            linestyle='-.', label='Motif {}'.format(labels.Event[i]))
+                # plt.annotate(labels.Event[i], xy=(labels.Time[i], 0.9 * y_max),
+                #              xytext=(5, 0), textcoords='offset points', rotation=45)
+            plt.grid()
+            # plt.legend(framealpha=1.0)
 
     if write_name is not None:
         write(write_name, r, max_sample)
@@ -74,5 +77,16 @@ audio_file = 'hello_train'
 label_file = '_labels.csv'
 audio, r = finPrint.read_audio(path + audio_file + file_type)
 audio_labels = pd.read_csv(path + audio_file + label_file)
+# plt.rc('font', size=15)          # controls default text sizes
+# plt.rc('axes', titlesize=22)     # fontsize of the axes title
+# plt.rc('axes', labelsize=22)    # fontsize of the x and y labels
+# plt.rc('xtick', labelsize=20)    # fontsize of the tick labels
+# plt.rc('ytick', labelsize=20)    # fontsize of the tick labels
+# plt.rc('legend', fontsize=20)    # legend fontsize
+# plt.rc('figure', titlesize=72)  # fontsize of the figure title
 matched_filter(audio, r, to_plot=True, window_length=2, labels=audio_labels)
+# plt.figure(num=1, figsize=(8,6))
+# fig = plt.gcf()
+# fig.set_size_inches(13.5, 10.5, forward=True)
+# plt.rcParams["figure.figsize"] = [16,4]
 plt.show()

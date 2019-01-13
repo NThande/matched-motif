@@ -143,13 +143,13 @@ class FingerPrint:
     def plot_spect_peaks_pairs(self, freqs, times, spectrogram, inc=50):
         plt.figure()
         plt.pcolormesh(times, freqs, np.abs(spectrogram), vmin=0, vmax=5)
-        plt.title('STFT Magnitude')
+        plt.title('Spectogram Magnitude with Peaks & Sample Pairs')
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [sec]')
 
         if self.peaks is None:
             return
-        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'bx')
+        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx', label='Peaks')
 
         if self.pairs is None:
             return
@@ -158,9 +158,10 @@ class FingerPrint:
             if i % inc == 0: pair_mask[i] = i
         pruned = self.pairs[pair_mask, :]
 
-        plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
+        # plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
         plt.plot([pruned[:, PAIR_TIME_IDX], pruned[:, PAIR_TIME_IDX + 1]],
-                 [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'y-')
+                 [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'w-')
+        # plt.legend()
         plt.show(block=False)
 
     # Get 2d peaks from a spectrogram
