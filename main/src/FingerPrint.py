@@ -85,7 +85,6 @@ class FingerPrint:
         # Return dummy entry
         if pairs.shape[0] == 0:
             print("No pairs found, only {} peaks".format(peaks.shape[0]))
-            # self.generate_pairs(fan_value, tol + 1)
             return np.zeros((1, 5))
         pairs = np.unique(pairs, axis=0)
         return pairs
@@ -158,10 +157,8 @@ class FingerPrint:
             if i % inc == 0: pair_mask[i] = i
         pruned = self.pairs[pair_mask, :]
 
-        # plt.plot(self.peaks[:, PEAK_TIME_IDX], self.peaks[:, FREQ_IDX], 'rx')
         plt.plot([pruned[:, PAIR_TIME_IDX], pruned[:, PAIR_TIME_IDX + 1]],
                  [pruned[:, FREQ_IDX], pruned[:, FREQ_IDX + 1]], 'w-')
-        # plt.legend()
         plt.show(block=False)
 
     # Get 2d peaks from a spectrogram

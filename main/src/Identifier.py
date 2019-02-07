@@ -87,6 +87,10 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
     max_sample = sound[max_samp_num * r + 1: (max_samp_num * r) + int((window_length) * r)]
 
     if to_plot:
+        fig = plt.gcf()
+        fig.set_size_inches(13.5, 10.5, forward=True)
+        plt.rcParams["figure.figsize"] = [16, 4]
+        plt.grid()
         plt.figure()
         plt.plot(snap_windows, snap_matches, 'rx-')
         plt.xlabel("Snippet Starting Point (s)")
@@ -124,7 +128,7 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
 
 path = './main/bin/unique/'
 file_type = '.wav'
-audio_file = 'hello_train'
+audio_file = 't3_train'
 snapshot_file = 'hello_test'
 label_file = '_labels.csv'
 

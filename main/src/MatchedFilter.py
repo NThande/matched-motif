@@ -1,92 +1,124 @@
-from scipy.io.wavfile import write
-import FingerPrint as finPrint
+import FingerPrint as fp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Apply a sliding window of a part of the song to the rest of the song
-def matched_filter(song, fs, window_length=2, write_name=None, to_plot=True, get_info=False, labels=None):
-    sound = song.reshape(-1, 1)
-    # r = song_fp.fs
-    r = fs
-    num_samples = sound.shape[0]
-    song_length = np.ceil(num_samples / r)
-    snap_num = int(song_length - window_length)
-    snap_windows = np.arange(0, snap_num)
-    snap_matches = np.zeros(snap_num)
-    # snap_hits = np.zeros(song_fp.pairs.shape[0])
-    snap_length = window_length * r
 
-    for i in range(0, snap_num):
-        snap_start = int(i * r)
-        snap_end = int((i + window_length) * r)
-        if snap_end > num_samples:
-            snap_end = num_samples
+# Applies a sliding window matched filter using ref as the reference signal and windows of
+# input_sig as the test signal at intervals of step.
+def windowed_matched_filter(ref, input_sig, length, step):
+    num_windows = int((input_sig.shape[0] - ref.shape[0]) / step)
+    match_results = np.zeros(num_windows)
+    for j in range(0, num_windows):
+        cur_sig = input_sig[j * step: (j * step) + length]
+        match_results[j] = np.dot(ref.T, cur_sig)
+    return match_results
 
-        snap = sound[snap_start: snap_end]
-        k = 0
-        while k + snap_length < num_samples:
-            sound_snap = sound[k : k + snap_length]
-            snap_matches[i] += np.dot(snap.T, sound_snap)
-            k += r
-        # snap_fp = finPrint.FingerPrint(snap, r)
-        # snap_peaks, snap_pairs = snap_fp.generate_fingerprint()
-        # match_vect = np.zeros(snap_pairs.shape[0])
 
-        # for j in range(0, snap_pairs.shape[0]):
-        #     match_idx, match_vect[j] = song_fp.search_for_pair(snap_pairs[j])
-        #     snap_hits[match_idx] += 1
-        # snap_matches[i] = np.average(match_vect)
-        print("Completed Window {} / {}".format(i, snap_num))
-    snap_matches = snap_matches / np.max(snap_matches)
-    max_samp_idx = np.argmax(snap_matches)
-    max_samp_num = snap_windows[max_samp_idx]
-    max_sample = sound[max_samp_num * r + 1: (max_samp_num * r) + int((window_length) * r)]
+# Using a series of windowed matched filters of length window_length (in seconds)
+# on sound with sampling frequency fs, identify the audio thumbnail
+def mf_thumbnail(sound, fs, window_length, window_step):
+    # Determine the number of windows possible in the sound
+    sound = sound.reshape(-1, 1)
+    sound_length = np.ceil(sound.shape[0] / fs)
+    num_windows = int((sound_length - window_length) / window_step)
+    window_similarity = np.zeros(num_windows)
+    window_matches = np.zeros((num_windows - 1, num_windows))
+    length_samples = window_length * fs
+    step_samples = window_step * fs
 
-    if to_plot:
-        plt.figure()
-        plt.plot(snap_windows, snap_matches, 'rx-')
-        plt.xlabel("Snippet Starting Point (s)")
-        plt.ylabel("Snippet Similarity")
-        plt.title("Self-Similarity Using a Matched Filter".format(window_length))
+    # Calculate the matched filters
+    for i in range(0, num_windows):
+        cur_start = i * step_samples
+        cur_end = (i + window_length) * step_samples
+        cur_sound = sound[cur_start: cur_end]
+        cur_matches = np.abs(windowed_matched_filter(cur_sound, sound, length_samples, step_samples))
+        window_matches[:, i] = cur_matches
+        window_similarity[i] = np.sum(cur_matches)
+        print("Window {} / {} Complete".format(i, num_windows))
 
-        if labels is not None:
-            axes = plt.gca()
-            y_max = axes.get_ylim()[1]
-            axes.set_xlim(axes.get_xlim()[0] - 1, axes.get_xlim()[1] + 1)
-            for i in range(0, labels.shape[0] - 1):
-                plt.axvspan(labels.Time[i], labels.Time[i+1], alpha=0.2,  color=labels.Color[i],
-                            linestyle='-.', label='Motif {}'.format(labels.Event[i]))
-                # plt.annotate(labels.Event[i], xy=(labels.Time[i], 0.9 * y_max),
-                #              xytext=(5, 0), textcoords='offset points', rotation=45)
-            plt.grid()
-            # plt.legend(framealpha=1.0)
+    # Identify the thumbnail
+    window_similarity = window_similarity / np.max(window_similarity)
+    thumb_idx = np.argmax(window_similarity)
+    thumb_start = thumb_idx * step_samples
+    thumb_end = (thumb_idx + window_length) * step_samples
+    thumbnail_sound = sound[thumb_start: thumb_end]
 
-    if write_name is not None:
-        write(write_name, r, max_sample)
+    return thumbnail_sound, window_similarity, window_matches
 
-    if get_info:
-        return max_sample, snap_windows, snap_matches
-    print("Matched Filter complete")
-    return max_sample
+
+# Plot the similarity used to calculate a thumbnail from mf_thumbnail.
+def plot_mf_similarity(window_similarity, window_step, labels=None):
+    window_start = np.zeros(window_similarity.shape)
+    for i in range(0, window_start.shape[0]):
+        window_start[i] = i * window_step
+
+    plt.figure()
+    ax = plt.gca()
+    ax.plot(window_start, window_similarity, 'rx-')
+    plt.xlabel("Window Starting Point (s)")
+    plt.ylabel("Window Similarity")
+    plt.title("Self-Similarity Using a Matched Filter")
+    if labels is not None:
+        ax = plot_add_motif_labels(ax, labels)
+    return ax
+
+
+# Add hand-labeled motifs to a similarity plot for a mf thumbnail
+def plot_add_motif_labels(ax, labels):
+    ax.set_xlim(ax.get_xlim()[0] - 1, ax.get_xlim()[1] + 1)
+    for i in range(0, labels.shape[0] - 1):
+        plt.axvspan(labels.Time[i], labels.Time[i + 1], alpha=0.2, color=labels.Color[i],
+                    linestyle='-.', label='Motif {}'.format(labels.Event[i]))
+    ax.grid()
+    return ax
+
+
+def plot_mf_similarity_matrix(similarity_matrix, tick_step=3):
+    num_windows = similarity_matrix.shape[0]
+    plt.figure()
+    plt.title("Self-Similarity Matrix Using Matched Filter")
+    plt.xlabel("Window #")
+    plt.ylabel("Window #")
+    ax = plt.gca()
+    ax.xaxis.set_ticks(np.arange(0, num_windows, tick_step))
+    ax.yaxis.set_ticks(np.arange(0, num_windows, tick_step))
+    plt.imshow(sim_matrix)
+    plt.colorbar()
+    return ax
+
+
+def plot_mf_window_layout(sound, fs, window_length, window_step, tick_step=1):
+    sound = sound.reshape(-1, 1)
+    sound_length = np.ceil(sound.shape[0] / fs)
+    num_windows = int((sound_length - window_length) / window_step)
+
+    plt.figure()
+    plt.title("Window layout for {}s windows at {}s intervals".format(window_length, window_step))
+    plt.xlabel("Seconds")
+    plt.ylabel("Window #")
+    ax = plt.gca()
+    ax.set_ylim(-1, num_windows)
+    ax.set_xlim(0, num_windows)
+    ax.xaxis.set_ticks(np.arange(0, num_windows, tick_step))
+    ax.yaxis.set_ticks(np.arange(0, num_windows - 1, tick_step))
+    ax.grid()
+    for i in range(0, num_windows - 1):
+        line_start = i / num_windows
+        line_end = (i + window_length) / num_windows
+        ax.axhline(i, line_start, line_end)
+        ax.plot([i, i + window_length], [i, i], 'rx')
+    return ax
 
 
 path = './main/bin/unique/'
 file_type = '.wav'
-audio_file = 'hello_train'
+audio_file = 't3_train'
 label_file = '_labels.csv'
-audio, r = finPrint.read_audio(path + audio_file + file_type)
+audio, fs = fp.read_audio(path + audio_file + file_type)
 audio_labels = pd.read_csv(path + audio_file + label_file)
-# plt.rc('font', size=15)          # controls default text sizes
-# plt.rc('axes', titlesize=22)     # fontsize of the axes title
-# plt.rc('axes', labelsize=22)    # fontsize of the x and y labels
-# plt.rc('xtick', labelsize=20)    # fontsize of the tick labels
-# plt.rc('ytick', labelsize=20)    # fontsize of the tick labels
-# plt.rc('legend', fontsize=20)    # legend fontsize
-# plt.rc('figure', titlesize=72)  # fontsize of the figure title
-matched_filter(audio, r, to_plot=True, window_length=2, labels=audio_labels)
-# plt.figure(num=1, figsize=(8,6))
-# fig = plt.gcf()
-# fig.set_size_inches(13.5, 10.5, forward=True)
-# plt.rcParams["figure.figsize"] = [16,4]
+thumbnail, similarity, sim_matrix = mf_thumbnail(audio, fs, window_length=2, window_step=1)
+plot_mf_similarity_matrix(sim_matrix)
+plot_mf_similarity(similarity, window_step=1, labels=audio_labels)
+plot_mf_window_layout(audio, fs, window_length=2, window_step=1)
 plt.show()
