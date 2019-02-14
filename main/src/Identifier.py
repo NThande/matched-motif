@@ -1,5 +1,5 @@
 from scipy.io.wavfile import write
-import FingerPrint as finPrint
+import FingerPrint as fp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ def shrinking_search(song_fp, sample_fp, start_time, center_time, to_plot=True):
     snip_matches = np.zeros(num_iter)
 
     for i in range(0, num_iter):
-        snippet_fp = finPrint.FingerPrint(sound[snip_start * r: snip_end * r], Fs=r)
+        snippet_fp = fp.FingerPrint(sound[snip_start * r: snip_end * r], Fs=r)
         snippet_fp.generate_fingerprint()
         match_vect = np.zeros(sample_fp.pairs.shape[0])
         for j in range(0, sample_fp.pairs.shape[0]):
@@ -72,7 +72,7 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
         if snap_end > sound.shape[0]:
             snap_end = sound.shape[0]
         snap = sound[snap_start: snap_end]
-        snap_fp = finPrint.FingerPrint(snap, r)
+        snap_fp = fp.FingerPrint(snap, r)
         snap_peaks, snap_pairs = snap_fp.generate_fingerprint()
         match_vect = np.zeros(snap_pairs.shape[0])
 
@@ -132,13 +132,13 @@ audio_file = 't3_train'
 snapshot_file = 'hello_test'
 label_file = '_labels.csv'
 
-audio, r = finPrint.read_audio(path + audio_file + file_type)
-audio_fp = finPrint.FingerPrint(audio, r)
+audio, r = fp.read_audio(path + audio_file + file_type)
+audio_fp = fp.FingerPrint(audio, r)
 audio_fp.generate_fingerprint()
 audio_labels = pd.read_csv(path + audio_file + label_file)
 
-snapshot, r = finPrint.read_audio(path + snapshot_file + file_type)
-snapshot_fp = finPrint.FingerPrint(snapshot, r)
+snapshot, r = fp.read_audio(path + snapshot_file + file_type)
+snapshot_fp = fp.FingerPrint(snapshot, r)
 snapshot_fp.generate_fingerprint()
 
 # print("Average matches for Snapshot: ", basic_search(audio_fp, snapshot_fp))
