@@ -2,5 +2,6 @@
 *.wav
 *.xlsx
 *.csv
+*.html
 bin/*
 *.pyc
