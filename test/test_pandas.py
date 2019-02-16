@@ -1,10 +1,6 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import string
-
-# df = pd.DataFrame({'x':np.random.rand(10), 'y':np.random.rand(10)},
-#                   index=list(string.ascii_lowercase[:10]))
+import numpy as np
+import pandas as pd
 
 df = pd.DataFrame({'x':np.asarray([1, 5.5, 7.5]), 'y':np.random.rand(3)}, index=('Event 1', 'Event 2', 'Event 3'))
 print(df)

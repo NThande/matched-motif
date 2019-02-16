@@ -1,5 +1,5 @@
 from scipy.io.wavfile import write
-import FingerPrint as finPrint
+import fingerprint as finPrint
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

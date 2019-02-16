@@ -19,6 +19,5 @@ nodes.data.head()
 
 chord = hv.Chord((links, nodes)).select(value=(5, None))
 chord.opts(opts.Chord(cmap='Category20', edge_cmap='Category20', edge_color=dim('source').str(),
-               labels='name', node_color=dim('index').str()))
+                      labels='name', node_color=dim('index').str()))
 show(hv.render(chord, backend='bokeh'))
-

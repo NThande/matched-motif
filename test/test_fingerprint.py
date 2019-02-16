@@ -1,5 +1,5 @@
 import numpy as np
-import FingerPrint as fp
+import fingerprint as fp
 import matplotlib.pyplot as plt
 
 
@@ -27,6 +27,7 @@ def test_find_self(sample_length, t_start, t_end):
         self_match_ratio[count] = self_match_ratio[count] / sample_fp.pairs.shape[0]
         count += 1
     return self_match_ratio
+
 
 path = './main/bin/unique/'
 file_type = '.wav'

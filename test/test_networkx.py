@@ -5,7 +5,7 @@ import librosa as lb
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import network_line_graph as nlg
+import arcgraph as nlg
 from bokeh.plotting import show
 
 hv.extension('bokeh')
@@ -22,11 +22,10 @@ beats = np.concatenate([[0], beats, [audio.shape[0]]])
 
 # Construct graph from beats
 G = nx.DiGraph(tempo=tempo)
-if tempo != 0 :
+if tempo != 0:
     for i in range(0, beats.shape[0] - 1):
-        G.add_node(i, start=beats[i], end=beats[i+1], length=(beats[i+1] - beats[i]))
+        G.add_node(i, start=beats[i], end=beats[i + 1], length=(beats[i + 1] - beats[i]))
 print("Number of graph nodes: ", G.number_of_nodes())
-# print(G.nodes.data())
 
 # Calculate weighted edges
 min_diff = 1.0 * fs
@@ -36,8 +35,8 @@ for i in range(0, G.number_of_nodes()):
         e_weight = np.abs(G.node[i]['length'] - G.node[j]['length'])
         if e_weight == 0:
             # e_weight_adj = e_weight / fs
-            e_weight_adj = 1.0/(j + 1)
-            G.add_edge(i, j, value= e_weight_adj)
+            e_weight_adj = 1.0 / (j + 1)
+            G.add_edge(i, j, value=e_weight_adj)
 
 print("Number of Graph Edges: ", G.number_of_edges())
 
@@ -53,7 +52,6 @@ for c in scc_G:
     for i in c:
         print(G.node[i]['start'])
 data_G = nx.to_pandas_edgelist(G)
-# print(data_G)
 
 hv.output(size=200)
 
@@ -62,7 +60,7 @@ print(data_G.head(3))
 chord = hv.Chord(data_G)
 chord.opts(
     opts.Chord(cmap='Category20', edge_cmap='Category20', edge_color=dim('source').str(),
-                node_color=dim('index').str()))
+               node_color=dim('index').str()))
 c = hv.render(chord, backend='bokeh')
 print(type(c))
 

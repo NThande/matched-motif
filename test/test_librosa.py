@@ -3,9 +3,7 @@ import librosa
 import numpy as np
 
 # 1. Get the file path to the included audio example
-# filename = librosa.util.example_audio_file()
-# print(filename)
-# print(type(filename))
+
 alt_filename = "C:/Users/nthan/PycharmProjects/autosampler/main/bin/t1.wav"
 print(alt_filename)
 # 2. Load the audio as a waveform `y`
