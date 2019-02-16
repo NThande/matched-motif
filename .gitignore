@@ -3,5 +3,6 @@
 *.xlsx
 *.csv
 *.html
+*.txt
 bin/*
 *.pyc

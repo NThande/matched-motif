@@ -76,6 +76,7 @@ import matplotlib.cbook as cb
 from matplotlib.colors import colorConverter, Colormap
 from matplotlib.patches import FancyArrowPatch, Circle
 
+
 def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs):
     """
     Convenience function that tries to do "the right thing".
@@ -118,10 +119,10 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
     if ax is None:
         ax = plt.gca()
 
-    if not np.all(adjacency_matrix == adjacency_matrix.T): # i.e. directed
+    if not np.all(adjacency_matrix == adjacency_matrix.T):  # i.e. directed
         kwargs.setdefault('draw_arrows', True)
 
-    if len(np.unique(adjacency_matrix)) > 2: # i.e. more than 0s and 1s i.e. weighted
+    if len(np.unique(adjacency_matrix)) > 2:  # i.e. more than 0s and 1s i.e. weighted
 
         # reorder edges such that edges with large absolute weights are plotted last
         # and hence most prominent in the graph
@@ -132,15 +133,15 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
         # apply edge_vmin, edge_vmax
         edge_vmin = kwargs.get('edge_vmin', np.nanmin(weights))
         edge_vmax = kwargs.get('edge_vmax', np.nanmax(weights))
-        weights[weights<edge_vmin] = edge_vmin
-        weights[weights>edge_vmax] = edge_vmax
+        weights[weights < edge_vmin] = edge_vmin
+        weights[weights > edge_vmax] = edge_vmax
 
         # rescale weights such that
         #  - the colormap midpoint is at zero-weight, and
         #  - negative and positive weights have comparable intensity values
-        weights /= np.nanmax([np.nanmax(abs(weights)), np.abs(edge_vmax), np.abs(edge_vmin)]) # [-1, 1]
-        weights += 1. # [0, 2]
-        weights /= 2. # [0, 1]
+        weights /= np.nanmax([np.nanmax(abs(weights)), np.abs(edge_vmax), np.abs(edge_vmin)])  # [-1, 1]
+        weights += 1.  # [0, 2]
+        weights /= 2.  # [0, 1]
 
         kwargs.setdefault('edge_color', weights)
         # kwargs.setdefault('edge_vmin', 0.)
@@ -159,7 +160,6 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
             node_order = np.arange(number_of_nodes)
 
     node_positions = _get_positions(node_order)
-
     node_artists = draw_nodes(node_positions, **kwargs)
     edge_artists = draw_edges(adjacency_matrix, node_positions, node_artists, **kwargs)
 
@@ -176,10 +176,13 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
 
     return
 
+
 def _get_positions(node_order):
     n = len(node_order)
-    node_positions = np.array(zip(node_order, np.zeros((n))))
+    node_positions = np.array(list(zip(node_order, np.zeros((n)))))
+    print(node_positions)
     return node_positions
+
 
 def _optimize_node_order(adjacency_matrix):
     """
@@ -208,12 +211,13 @@ def _optimize_node_order(adjacency_matrix):
                 c, (p1, p2) = networkx.stoer_wagner(g.subgraph(p0))
                 new_partitions.append(p1)
                 new_partitions.append(p2)
-            else: # nothing to partition
+            else:  # nothing to partition
                 new_partitions.append(p0)
         partitions = new_partitions
 
     node_order = np.concatenate(partitions)
     return node_order
+
 
 def draw_nodes(node_positions,
                node_shape='full',
@@ -317,7 +321,7 @@ def draw_nodes(node_positions,
         # draw node
         node_artist = _get_node_artist(shape=node_shape,
                                        position=node_positions[ii],
-                                       size=node_size[ii] -node_edge_width[ii],
+                                       size=node_size[ii] - node_edge_width[ii],
                                        facecolor=node_color[ii],
                                        zorder=2)
         ax.add_artist(node_artist)
@@ -325,8 +329,9 @@ def draw_nodes(node_positions,
 
     return artists
 
+
 def _get_node_artist(shape, position, size, facecolor, zorder=2):
-    if shape == 'full': # full circle
+    if shape == 'full':  # full circle
         artist = matplotlib.patches.Circle(xy=position,
                                            radius=size,
                                            facecolor=facecolor,
@@ -340,6 +345,7 @@ def _get_node_artist(shape, position, size, facecolor, zorder=2):
         raise ValueError("Node shape one of: 'full'. Current shape:{}".format(shape))
 
     return artist
+
 
 # verbatim in netgraph
 def draw_node_labels(node_positions,
@@ -425,6 +431,7 @@ def draw_node_labels(node_positions,
 
     return artists
 
+
 def draw_edges(adjacency_matrix,
                node_positions,
                node_artists=None,
@@ -505,9 +512,9 @@ def draw_edges(adjacency_matrix,
         edge_width = edge_width * np.ones_like(adjacency_matrix, dtype=np.float)
 
     if isinstance(edge_color, np.ndarray):
-        if (edge_color.ndim == 3) and (edge_color.shape[-1] == 4): # i.e. full RGBA specification
+        if (edge_color.ndim == 3) and (edge_color.shape[-1] == 4):  # i.e. full RGBA specification
             pass
-        else: # array of floats that need to parsed
+        else:  # array of floats that need to parsed
             edge_color = _parse_color_input(adjacency_matrix.size,
                                             edge_color.ravel(),
                                             cmap=edge_cmap,
@@ -515,7 +522,7 @@ def draw_edges(adjacency_matrix,
                                             vmax=edge_vmax,
                                             alpha=edge_alpha)
             edge_color = edge_color.reshape([number_of_nodes, number_of_nodes, 4])
-    else: # single float or string
+    else:  # single float or string
         edge_color = _parse_color_input(adjacency_matrix.size,
                                         edge_color,
                                         cmap=edge_cmap,
@@ -524,8 +531,8 @@ def draw_edges(adjacency_matrix,
                                         alpha=edge_alpha)
         edge_color = edge_color.reshape([number_of_nodes, number_of_nodes, 4])
 
-    sources, targets = np.where(~np.isnan(adjacency_matrix))
-    edge_list = zip(sources.tolist(), targets.tolist())
+    sources, targets = np.nonzero(adjacency_matrix)
+    edge_list = list(zip(sources.tolist(), targets.tolist()))
 
     # order if necessary
     if edge_zorder is None:
@@ -549,10 +556,12 @@ def draw_edges(adjacency_matrix,
 
     return artists
 
+
 def _adjacency_to_list(adjacency_matrix):
     sources, targets = np.where(~np.isnan(adjacency_matrix))
     edge_list = zip(sources.tolist(), targets.tolist())
     return edge_list
+
 
 def _add_edge(source, target,
               node_positions,
@@ -562,7 +571,6 @@ def _add_edge(source, target,
               arc_above,
               draw_arrows,
               ax):
-
     source_pos = node_positions[source]
     target_pos = node_positions[target]
 
@@ -582,8 +590,9 @@ def _add_edge(source, target,
         rad *= -1
 
     if draw_arrows:
-        arrowstyle = "fancy,head_length={},head_width={},tail_width={}".format(2*edge_width, 3*edge_width, edge_width)
-    else: # make arrow heads really small
+        arrowstyle = "fancy,head_length={},head_width={},tail_width={}".format(2 * edge_width, 3 * edge_width,
+                                                                               edge_width)
+    else:  # make arrow heads really small
         arrowstyle = "fancy,head_length={},head_width={},tail_width={}".format(1e-10, 1e-10, edge_width)
 
     # stop edges from being plotted on top or bottom of node artists;
@@ -602,6 +611,7 @@ def _add_edge(source, target,
 
     return arrow
 
+
 def _update_view(adjacency_matrix, node_positions, ax):
     """
     Patches are not registered properly
@@ -615,28 +625,30 @@ def _update_view(adjacency_matrix, node_positions, ax):
     # maxy also depends on longest arc
     edge_list = _adjacency_to_list(adjacency_matrix)
     distances = [_get_distance(node_positions[source], node_positions[target]) for source, target in edge_list]
-    max_arc_height = 1.1*np.max(distances) / 2.
+    max_arc_height = 1.1 * np.max(distances) / 2.
     maxy += max_arc_height
     miny -= max_arc_height
 
-    w = maxx-minx
-    h = maxy-miny
-    padx, pady = 0.05*w, 0.05*h
+    w = maxx - minx
+    h = maxy - miny
+    padx, pady = 0.05 * w, 0.05 * h
 
     # corners = (minx-padx, miny-pady), (maxx+padx, maxy+pady)
     # ax.update_datalim(corners)
     # ax.autoscale_view()
-    ax.set_xlim(minx-padx, maxx+padx)
-    ax.set_ylim(miny-pady, maxy+pady)
+    ax.set_xlim(minx - padx, maxx + padx)
+    ax.set_ylim(miny - pady, maxy + pady)
 
     ax.get_figure().canvas.draw()
     return
 
+
 def _get_distance(source_pos, target_pos):
     dx = source_pos[0] - target_pos[0]
     dy = source_pos[1] - target_pos[1]
-    d = np.sqrt(dx**2 + dy**2)
+    d = np.sqrt(dx ** 2 + dy ** 2)
     return d
+
 
 # verbatim in netgraph
 def _parse_color_input(number_of_elements, color_spec,
@@ -688,9 +700,10 @@ def _parse_color_input(number_of_elements, color_spec,
         rgba_array = np.array([colorConverter.to_rgba(c) for c in color_spec])
 
     # Set the final column of the rgba_array to have the relevant alpha values.
-    rgba_array[:,-1] = alpha
+    rgba_array[:, -1] = alpha
 
     return rgba_array
+
 
 # verbatim in netgraph
 def _make_pretty(ax):
@@ -702,6 +715,7 @@ def _make_pretty(ax):
     ax.get_figure().canvas.draw()
     return
 
+
 # verbatim in netgraph
 def _get_random_weight_matrix(n, p,
                               weighted=True,
@@ -709,7 +723,6 @@ def _get_random_weight_matrix(n, p,
                               directed=True,
                               fully_bidirectional=False,
                               dales_law=False):
-
     if weighted:
         w = np.random.randn(n, n)
     else:
@@ -723,77 +736,80 @@ def _get_random_weight_matrix(n, p,
         w[np.tril_indices(n)] = np.nan
 
     if directed and fully_bidirectional:
-        c = np.random.rand(n, n) <= p/2
+        c = np.random.rand(n, n) <= p / 2
         c = np.logical_or(c, c.T)
     else:
         c = np.random.rand(n, n) <= p
     w[~c] = np.nan
 
     if dales_law and weighted and not strictly_positive:
-        w = np.abs(w) * np.sign(np.random.randn(n))[:,None]
+        w = np.abs(w) * np.sign(np.random.randn(n))[:, None]
     return w
+
 
 def test(n=20, p=0.1, ax=None, directed=True, **kwargs):
     # create two networks that are similar to each other
     # by combining a common core network with two different networks
-    w1 = _get_random_weight_matrix(n, p/3., directed=directed)
-    w2 = _get_random_weight_matrix(n, 2*p/3., directed=directed)
-    w3 = _get_random_weight_matrix(n, p/3., directed=directed)
+    w1 = _get_random_weight_matrix(n, p / 3., directed=directed)
+    w2 = _get_random_weight_matrix(n, 2 * p / 3., directed=directed)
+    w3 = _get_random_weight_matrix(n, p / 3., directed=directed)
 
-    for w in [w1,w2,w3]:
+    for w in [w1, w2, w3]:
         w[np.isnan(w)] = 0.
 
     w12 = w1 + w2
     w23 = w2 + w3
 
-    w123 = w1+w2+w3 # for plotting
+    w123 = w1 + w2 + w3  # for plotting
 
     for w in [w12, w23, w123]:
-        w[w==0] = np.nan
+        w[w == 0] = np.nan
 
     # node_order = range(n)
     node_order = _optimize_node_order(w123)
 
-    fig, ax = plt.subplots(1,1)
+    fig, ax = plt.subplots(1, 1)
 
     max_val = 3.
     draw(w12, node_order=node_order, ax=ax, arc_above=True, edge_vmin=-max_val, edge_vmax=max_val)
     draw(w23, node_order=node_order, ax=ax, arc_above=False, edge_vmin=-max_val, edge_vmax=max_val)
 
-    ax.text(0,1, 'Before', transform=ax.transAxes, fontsize=18)
-    ax.text(0,0, 'After', transform=ax.transAxes, fontsize=18)
+    ax.text(0, 1, 'Before', transform=ax.transAxes, fontsize=18)
+    ax.text(0, 0, 'After', transform=ax.transAxes, fontsize=18)
     plt.show()
 
     return ax
 
+
 def _get_modular_weight_matrix(module_sizes, p_in=0.5, p_ex=0.1, show_plot=False):
     n = np.sum(module_sizes)
-    c = np.random.rand(n,n) < p_ex
-    w = np.random.randn(n,n)
+    c = np.random.rand(n, n) < p_ex
+    w = np.random.randn(n, n)
     w[~c] = 0.
 
     start = np.cumsum(np.concatenate([[0], module_sizes]))[:-1]
     stop = np.cumsum(np.concatenate([[0], module_sizes]))[1:]
 
     for ii, s in enumerate(module_sizes):
-        ww = np.random.randn(s,s)
-        cc = np.random.rand(s,s) < p_in - p_ex
+        ww = np.random.randn(s, s)
+        cc = np.random.rand(s, s) < p_in - p_ex
         ww[~cc] = 0.
         w[start[ii]:stop[ii], start[ii]:stop[ii]] += ww
 
     if show_plot:
-        fig, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1, 1)
         ax.imshow(w, cmap='gray', interpolation='none')
 
-    w[w==0] = np.nan
+    w[w == 0] = np.nan
     return w
 
+
 def test_modular_graph():
-    w = _get_modular_weight_matrix([10,10], p_in=0.9, p_ex=0.1)
+    w = _get_modular_weight_matrix([10, 10], p_in=0.9, p_ex=0.1)
     optimal_order = _optimize_node_order(w)
     random_order = np.random.permutation(optimal_order)
 
-    fig, ax = plt.subplots(1,1)
+    fig, ax = plt.subplots(1, 1)
 
     max_val = 3.
     draw(w, node_order=optimal_order, ax=ax, arc_above=True, edge_vmin=-max_val, edge_vmax=max_val)
