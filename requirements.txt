@@ -1,0 +1,8 @@
+bokeh
+networkx
+holoviews
+pandas
+librosa
+scipy
+numpy
+matplotlib

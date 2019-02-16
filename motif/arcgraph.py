@@ -68,13 +68,12 @@ plt.show()
 
 """
 
-import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import matplotlib.cbook as cb
-from matplotlib.colors import colorConverter, Colormap
-from matplotlib.patches import FancyArrowPatch, Circle
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import colorConverter
+from matplotlib.patches import FancyArrowPatch
 
 
 def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs):
