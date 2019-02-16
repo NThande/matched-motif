@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Basic test
-def basic_fingerprint_test(filename):
+def test_fingerprint(filename):
     audio, r = fp.read_audio(filename)
     audio_fp = fp.FingerPrint(audio, r)
     audio_fp.generate_fingerprint(to_plot=True, plot_inc=500)
@@ -12,7 +12,7 @@ def basic_fingerprint_test(filename):
     return num_self_matches
 
 
-def test_find_self(sample_length, t_start, t_end):
+def test_self_search(sample_length, t_start, t_end):
     self_match_ratio = np.zeros(t_end - t_start)
     count = 0
     for i in range(t_start, t_end):
@@ -29,8 +29,8 @@ def test_find_self(sample_length, t_start, t_end):
     return self_match_ratio
 
 
-path = './main/bin/unique/'
-file_type = '.wav'
-audio_file = 'hello_train'
-basic_fingerprint_test(path + audio_file + file_type)
-plt.show()
+# path = './main/bin/unique/'
+# file_type = '.wav'
+# audio_file = 'hello_train'
+# basic_fingerprint_test(path + audio_file + file_type)
+# plt.show()

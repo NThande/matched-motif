@@ -1,45 +1,43 @@
-# Beat tracking example
-import librosa
+from pathlib import Path
+import librosa as lb
 import numpy as np
 
-# 1. Get the file path to the included audio example
 
-alt_filename = "C:/Users/nthan/PycharmProjects/autosampler/main/bin/t1.wav"
-print(alt_filename)
-# 2. Load the audio as a waveform `y`
-#    Store the sampling rate as `sr`
-y, sr = librosa.load(alt_filename)
+def test_librosa():
+    # 1. Get the file path to the audio
+    audio_dir = Path("C:/Users/nthan/PycharmProjects/autosampler/bin/")
+    file_name = audio_dir / "t1.wav"
 
-# Set the hop length; at 22050 Hz, 512 samples ~= 23ms
-hop_length = 512
+    # 2. Load the audio as a waveform y with sampling rate sr
+    y, sr = lb.load(file_name)
 
-# Separate harmonics and percussives into two waveforms
-y_harmonic, y_percussive = librosa.effects.hpss(y)
+    # Set the hop length; at 22050 Hz, 512 samples ~= 23ms
+    hop_length = 512
 
-# Beat track on the percussive signal
-tempo, beat_frames = librosa.beat.beat_track(y=y_percussive,
-                                             sr=sr)
+    # Separate harmonics and percussives into two waveforms
+    y_harmonic, y_percussive = lb.effects.hpss(y)
 
-# Compute MFCC features from the raw signal
-mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13)
+    # Beat track on the percussive signal
+    tempo, beat_frames = lb.beat.beat_track(y=y_percussive, sr=sr)
 
-# And the first-order differences (delta features)
-mfcc_delta = librosa.feature.delta(mfcc)
+    # Compute MFCC features from the raw signal
+    mfcc = lb.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13)
 
-# Stack and synchronize between beat events
-# This time, we'll use the mean value (default) instead of median
-beat_mfcc_delta = librosa.util.sync(np.vstack([mfcc, mfcc_delta]),
-                                    beat_frames)
+    # And the first-order differences (delta features)
+    mfcc_delta = lb.feature.delta(mfcc)
 
-# Compute chroma features from the harmonic signal
-chromagram = librosa.feature.chroma_cqt(y=y_harmonic,
-                                        sr=sr)
+    # Stack and synchronize between beat events
+    # This time, we'll use the mean value (default) instead of median
+    beat_mfcc_delta = lb.util.sync(np.vstack([mfcc, mfcc_delta]),
+                                   beat_frames)
 
-# Aggregate chroma features between beat events
-# We'll use the median value of each feature between beat frames
-beat_chroma = librosa.util.sync(chromagram,
-                                beat_frames,
-                                aggregate=np.median)
+    # Compute chroma features from the harmonic signal
+    chromagram = lb.feature.chroma_cqt(y=y_harmonic,
+                                       sr=sr)
 
-# Finally, stack all beat-synchronous features together
-beat_features = np.vstack([beat_chroma, beat_mfcc_delta])
+    # Aggregate chroma features between beat events
+    # We'll use the median value of each feature between beat frames
+    beat_chroma = lb.util.sync(chromagram, beat_frames, aggregate=np.median)
+
+    # Finally, stack all beat-synchronous features together
+    beat_features = np.vstack([beat_chroma, beat_mfcc_delta])
