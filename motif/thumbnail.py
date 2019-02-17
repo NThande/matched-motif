@@ -126,7 +126,7 @@ def autowindow_search(song_fp, window_length=2, write_name=None, to_plot=True, g
     return max_sample
 
 
-path = './main/bin/unique/'
+path = './main/bin/labelled/'
 file_type = '.wav'
 audio_file = 't3_train'
 snapshot_file = 'hello_test'

@@ -1,3 +1,7 @@
+# arcgraph.py
+# Modified version of "network_line_graph" by Paul Brodersen as of 02/16/2019.
+# Modified to draw arc graphs for the motif network in Python 3.
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 

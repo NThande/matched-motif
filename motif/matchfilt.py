@@ -1,3 +1,4 @@
+from pathlib import Path
 import librosa as lb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -138,15 +139,25 @@ def plot_mf_window_layout(sound, fs, window_length, window_step, tick_step=1):
     return ax
 
 
-path = './main/bin/unique/'
-file_type = '.wav'
-audio_file = 't3_train'
-label_file = '_labels.csv'
-audio, fs = lb.load(path + audio_file + file_type)
-audio_labels = pd.read_csv(path + audio_file + label_file)
-thumbnail, similarity, sim_matrix = mf_thumbnail(audio, fs, window_length=2, window_step=1)
-# thumbnail, similarity, sim_matrix = mf_thumbnail_onset(audio, fs, window_length=2)
-plot_mf_similarity_matrix(sim_matrix)
-plot_mf_similarity(similarity, window_step=1, labels=audio_labels)
-plot_mf_window_layout(audio, fs, window_length=2, window_step=1)
-plt.show()
+def main():
+    audio_dir = Path("./bin/labelled")
+    audio_name = 't3_train'
+    audio_type = '.wav'
+    label_name = '_labels.csv'
+    audio_file = audio_dir / (audio_name + audio_type)
+    label_file = audio_dir / (audio_name + label_name)
+    audio, fs = lb.load(audio_file)
+    audio_labels = pd.read_csv(label_file)
+
+    thumbnail, similarity, sim_matrix = mf_thumbnail(audio, fs, window_length=2, window_step=1)
+
+    plot_mf_similarity_matrix(sim_matrix)
+    plot_mf_similarity(similarity, window_step=1, labels=audio_labels)
+    plot_mf_window_layout(audio, fs, window_length=2, window_step=1)
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
+
+
