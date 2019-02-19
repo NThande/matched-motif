@@ -3,14 +3,15 @@ import librosa as lb
 import networkx as nx
 import numpy as np
 import unittest
+import fileutils
 
 
 class BeatLengthTest(unittest.TestCase):
     def setUp(self):
         # Read in the audio
-        audio_dir = Path("../bin/")
-        file_name = audio_dir / "t1.wav"
-        audio, fs = lb.load(file_name)
+        name = 't1'
+        directory = "../bin/"
+        audio, fs = fileutils.load_audio(name, audio_dir=directory)
 
         # Identify beats in the audio
         tempo, beats = lb.beat.beat_track(y=audio, sr=fs, units='time')
