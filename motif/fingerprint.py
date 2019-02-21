@@ -6,7 +6,7 @@ from scipy.ndimage.morphology import (generate_binary_structure,
 
 import fileutils
 import visualization as vis
-import config
+import config as cfg
 
 # Modified from Dejavu Fingerprinting System (as of 11/21/18)
 FREQ_IDX = 0
@@ -23,8 +23,8 @@ MAX_TIME_DELTA = 200
 # FFT the channel, log transform output, find local maxima, then return
 # locally sensitive hashes.
 def fingerprint(audio,
-                wsize=config.WINDOW_SIZE,
-                wratio=config.OVERLAP_RATIO,
+                wsize=cfg.WINDOW_SIZE,
+                wratio=cfg.OVERLAP_RATIO,
                 fan_value=DEFAULT_FAN_VALUE,
                 amp_min=DEFAULT_AMP_MIN):
     # FFT the signal and extract frequency components
@@ -46,7 +46,7 @@ def fingerprint(audio,
 
 # Generate peak-pairs based on locally-sensitive target zone
 def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
-    peaks = np.unique(peaks, axis=0)
+    # peaks = np.unique(peaks, axis=0)
     num_peaks = peaks.shape[0]
     pairs = np.zeros((0, 5))
 
@@ -69,24 +69,6 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
         return np.zeros((1, 5))
     pairs = np.unique(pairs, axis=0)
     return pairs
-
-
-# Query the pair table
-def linear_search(pairs, query):
-    t_delta_tol = 10
-    t_delta_matches = search_col(pairs[:, PAIR_TDELTA_IDX], query[PAIR_TDELTA_IDX], t_delta_tol)
-    t_pairs = pairs[t_delta_matches]
-
-    f_tol = 50
-    f1_matches = search_col(t_pairs[:, FREQ_IDX], query[FREQ_IDX], f_tol)
-    f1_pairs = t_pairs[f1_matches]
-
-    f2_matches = search_col(f1_pairs[:, FREQ_IDX + 1], query[FREQ_IDX + 1], f_tol)
-    f2_pairs = f1_pairs[f2_matches]
-
-    num_matches = f2_pairs.shape[0]
-    tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
-    return tf2_idx, num_matches
 
 
 def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
@@ -118,6 +100,30 @@ def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
     return frequency_idx, time_idx
 
 
+# Search fingerprint song_fp for entries from fingerprint sample_fp
+def linear_search(db_pairs, query_pairs, **kwargs):
+    matches = np.zeros(query_pairs.shape[0])
+    for i in range(0, query_pairs.shape[0]):
+        _, matches[i] = linear_query(db_pairs, query_pairs[i], **kwargs)
+    return matches
+
+
+# Query the pair table for one pair
+def linear_query(db_pairs, query, delta_tol=10, f_tol=50):
+    t_delta_matches = search_col(db_pairs[:, PAIR_TDELTA_IDX], query[PAIR_TDELTA_IDX], delta_tol)
+    t_pairs = db_pairs[t_delta_matches]
+
+    f1_matches = search_col(t_pairs[:, FREQ_IDX], query[FREQ_IDX], f_tol)
+    f1_pairs = t_pairs[f1_matches]
+
+    f2_matches = search_col(f1_pairs[:, FREQ_IDX + 1], query[FREQ_IDX + 1], f_tol)
+    f2_pairs = f1_pairs[f2_matches]
+
+    num_matches = f2_pairs.shape[0]
+    tf2_idx = (t_delta_matches[f1_matches])[f2_matches]
+    return tf2_idx, num_matches
+
+
 # Search a single column for data within the tolerance
 def search_col(data, query, tol=0):
     if tol == 0:
@@ -133,9 +139,9 @@ def main():
     audio, fs = fileutils.load_audio('t1', './bin/')
     peaks, pairs = fingerprint(audio)
     sxx = stft(audio,
-               n_fft=config.WINDOW_SIZE,
-               win_length=config.WINDOW_SIZE,
-               hop_length=int(config.WINDOW_SIZE * config.OVERLAP_RATIO),
+               n_fft=cfg.WINDOW_SIZE,
+               win_length=cfg.WINDOW_SIZE,
+               hop_length=int(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO),
                window='hann')
     vis.plot_stft(sxx, fs=fs, frames=False)
     vis.plot_peaks(peaks)

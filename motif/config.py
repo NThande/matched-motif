@@ -1,3 +1,4 @@
+AUDIO_DIR = './bin/labelled'
 FREQ_IDX = 0
 PEAK_TIME_IDX = 1
 PAIR_TIME_IDX = 2
