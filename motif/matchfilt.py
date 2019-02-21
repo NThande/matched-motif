@@ -83,8 +83,8 @@ def main():
     thumbnail, similarity, sim_matrix = mf_thumbnail(audio, fs, window_length=2, window_step=1)
 
     vis.plot_similarity_matrix(sim_matrix)
-    vis.plot_mf_similarity(similarity, window_step=1, labels=audio_labels)
-    vis.plot_mf_window_layout(audio, fs, window_length=2, window_step=1)
+    vis.plot_similarity_curve(similarity, window_times=1, labels=audio_labels)
+    vis.plot_window_overlap(audio, fs, window_length=2, window_step=1)
     vis.show()
 
 
