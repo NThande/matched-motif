@@ -145,13 +145,6 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
     return ax
 
 
-# Draw a simple circular node graph of g
-def draw_netgraph(g, ax=None):
-    ax = get_axes(ax)
-    nx.draw(g, pos=nx.circular_layout(g), nodecolor='r', with_labels=True, )
-    return ax
-
-
 # Draw Chord diagram of graph g
 def draw_chordgraph(g,
                     node_labels=None,
@@ -160,45 +153,58 @@ def draw_chordgraph(g,
                     cmap='Category20',
                     title='',
                     draw_labels=True):
-    # Get the edge list of the graph
-    data_G = nx.to_pandas_edgelist(g)
-
     hv.extension('bokeh')
     hv.output(size=size)
 
+    # Get the edge list of the graph
+    edge_g = nx.to_pandas_edgelist(g)
+
     # Account for passed in node dataset
     if node_labels is not None:
-        chord = hv.Chord((data_G, node_labels), label=title)
+        chord = hv.Chord((edge_g, node_labels), label=title).select(value=(5, None))
     else:
-        chord = hv.Chord(data_G, label=title)
+        chord = hv.Chord(edge_g, label=title)
         label_col = 'index'
 
     # Draw the desired graph
     if draw_labels is True:
         chord.opts(
-            hv.opts.Chord(cmap=cmap, edge_cmap=cmap,
-                          edge_color=hv.dim('source').str(),
-                          node_color=hv.dim('index').str(),
-                          labels=label_col))
+            hv.opts.Chord(
+                cmap=cmap, edge_cmap=cmap,
+                edge_color=hv.dim('source').str(),
+                node_color=hv.dim('index').str(),
+                labels=label_col
+            ))
     else:
         chord.opts(
             hv.opts.Chord(cmap=cmap, edge_cmap=cmap,
                           edge_color=hv.dim('source').str(),
                           node_color=hv.dim('index').str()
                           ))
-
     c = hv.render(chord, backend='bokeh')
     return c
 
 
+# Create labels for a chord graph and an arcgraph
 def _create_node_labels(g, label_col='label', node_attr='label'):
     label_dataset = {label_col: []}
     node_dict = {}
-    for i in range(nx.number_of_nodes(g)):
+    for i in g.nodes:
         label_dataset[label_col].append(g.nodes[i][node_attr])
         node_dict[i] = g.nodes[i][node_attr]
     nodes_dataset = hv.Dataset(pd.DataFrame(label_dataset), 'index')
     return nodes_dataset, node_dict
+
+
+# Draw a simple circular node graph of g
+def draw_netgraph(g, ax=None, **kwargs):
+    ax = get_axes(ax)
+    node_layout = kwargs.setdefault('node_layout', nx.circular_layout(g))
+    nx.draw(g, pos=node_layout,
+            with_labels=True,
+            arrows=True,
+            **kwargs)
+    return ax
 
 
 # Draw arc diagram of graph g
@@ -210,15 +216,24 @@ def draw_arcgraph(g, ax=None,
                   node_size=20.,
                   node_positions=None,
                   edge_width=3.,
-                  edge_color=None):
+                  edge_color=None,
+                  **kwargs
+                  ):
     adj_G = nx.to_numpy_array(g, weight=weight_attr)
+    vertical_shift=kwargs.setdefault('vertical_shift', 2)
     ax = get_axes(ax)
 
     # Draw arcgraph according to arguments
     if node_positions is not None:
-        arc.draw_nodes(node_positions, ax=ax, node_size=node_size, node_color=node_color)
-        arc.draw_node_labels(node_positions, node_labels, ax=ax)
-        arc.draw_edges(adj_G, ax=ax, node_positions=node_positions, edge_width=edge_width, edge_color=edge_color)
+        arc.draw_nodes(node_positions, ax=ax,
+                       node_size=node_size,
+                       node_color=node_color)
+        arc.draw_node_labels(node_positions, node_labels, ax=ax,
+                             vertical_shift=vertical_shift)
+        arc.draw_edges(adj_G, ax=ax,
+                       node_positions=node_positions,
+                       edge_width=edge_width,
+                       edge_color=edge_color)
         arc._update_view(adj_G, node_positions, ax=ax)
         arc._make_pretty(ax=ax)
 
@@ -228,7 +243,9 @@ def draw_arcgraph(g, ax=None,
                  node_labels=node_labels,
                  node_color=node_color,
                  node_size=node_size,
-                 edge_width=edge_width)
+                 edge_width=edge_width,
+                 vertical_shift=vertical_shift
+                 )
     return ax
 
 

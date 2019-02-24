@@ -37,7 +37,7 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
             cur_matches[i] = 0
         window_matches[:, i] = cur_matches
         similarity[i] = np.sum(cur_matches)
-        print("Window {} / {} Complete".format(i + 1, num_windows))
+        # print("Window {} / {} Complete".format(i + 1, num_windows))
 
     # Identify the thumbnail
     similarity = similarity / np.max(similarity)
@@ -59,8 +59,8 @@ def main():
 
     ax = vis.plot_similarity_matrix(sim_matrix)
     ax.set_title('Regular Segmentation Similarity Matrix')
-    # ax = vis.plot_similarity_curve(similarity, segment_times=segments, labels=audio_labels)
-    # ax.set_title('Regular Segmentation Similarity')
+    ax = vis.plot_similarity_curve(similarity, segment_times=segments, labels=audio_labels)
+    ax.set_title('Regular Segmentation Similarity')
     ax = vis.plot_window_overlap(segments, np.ones(segments.shape) * 2, tick_step=3)
     ax.set_title('Regular Segmentation Overlap')
     ax.grid()
@@ -69,8 +69,8 @@ def main():
 
     ax = vis.plot_similarity_matrix(sim_matrix)
     ax.set_title('Onset Segmentation Similarity Matrix')
-    # ax = vis.plot_similarity_curve(similarity, segment_times=segments, labels=audio_labels)
-    # ax.set_title('Onset Segmentation Similarity')
+    ax = vis.plot_similarity_curve(similarity, segment_times=segments, labels=audio_labels)
+    ax.set_title('Onset Segmentation Similarity')
     ax = vis.plot_window_overlap(segments, np.ones(segments.shape) * 2, tick_step=3)
     ax.set_title('Onset Segmentation Overlap')
     ax.grid()

@@ -167,7 +167,7 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
     edge_artists = draw_edges(adjacency_matrix, node_positions, node_artists, **kwargs)
 
     if node_labels is not None:
-        draw_node_labels(node_positions, node_labels)
+        draw_node_labels(node_positions, node_labels, **kwargs)
 
     # Patches are not registered properly
     # when matplotlib sets axis limits automatically.
@@ -183,7 +183,6 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
 def _get_positions(node_order):
     n = len(node_order)
     node_positions = np.array(list(zip(node_order, np.zeros((n)))))
-    print(node_positions)
     return node_positions
 
 
@@ -415,10 +414,13 @@ def draw_node_labels(node_positions,
     horizontalalignment = kwargs.get('horizontalalignment', 'center')
     verticalalignment = kwargs.get('verticalalignment', 'center')
 
+    # For one-sided arc graphs with long labels
+    vertical_shift = kwargs.setdefault('vertical_shift', 0)
+
     artists = dict()  # there is no text collection so we'll fake one
     for ii, label in node_labels.items():
         x, y = node_positions[ii]
-        text_object = ax.text(x, y,
+        text_object = ax.text(x, y - vertical_shift,
                               label,
                               size=font_size,
                               color=font_color,
@@ -429,7 +431,8 @@ def draw_node_labels(node_positions,
                               verticalalignment=verticalalignment,
                               transform=ax.transData,
                               bbox=bbox,
-                              clip_on=False)
+                              clip_on=False,
+                              rotation=90)
         artists[ii] = text_object
 
     return artists
