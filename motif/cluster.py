@@ -25,7 +25,8 @@ def cluster_agglom(g, k_clusters=2, incidence=None, weight='weight', linkage='wa
     return agglom
 
 
-# Condense to a minor graph, using merge_attr as the new graph indices. Maintains only the weight_attr between edges.
+# Condense to a minor graph, using merge_attr as the new graph indices.
+# Maintains only the sum of weight_attr of edges between different groups.
 def condense(g, merge_attr, weight_attr='weight'):
     D = nx.DiGraph()
 
@@ -52,26 +53,33 @@ def condense(g, merge_attr, weight_attr='weight'):
             else:
                 node_data[group] = {attr: [attr_data]}
 
+    # nx.set_node_attributes(D, node_data)
     nx.set_node_attributes(D, node_data)
+    print(grp.to_node_dataframe(D))
+    print(D.nodes)
 
+    # Add and sum edge weights
     edge_data = {}
     for u, v in g.edges:
         u_d = g.nodes[u][merge_attr]
         v_d = g.nodes[v][merge_attr]
 
-        for attr in g.edges[u, v]:
-            attr_data = g.edges[u, v][attr]
-            if (u_d, v_d) in edge_data:
-                if attr in edge_data[u_d, v_d]:
-                    edge_data[u_d, v_d][attr].append(attr_data)
-                else:
-                    edge_data[u_d, v_d][attr] = [attr_data]
-            else:
-                edge_data[u_d, v_d] = {attr: [attr_data]}
+        # No self loops
+        if u_d == v_d:
+            continue
 
+        if (u_d, v_d) not in D.edges:
+            D.add_edge(u_d, v_d)
+
+        attr_data = g.edges[u, v][weight_attr]
+        if (u_d, v_d) in edge_data:
+            edge_data[(u_d, v_d)] += attr_data
+        else:
+            edge_data[(u_d, v_d)] = attr_data
+
+    nx.set_edge_attributes(D, edge_data, weight_attr)
     print(nx.to_pandas_edgelist(D))
     return D
-    # print(node_data)
 
 
 def main():
@@ -129,7 +137,7 @@ def main():
     grp.add_node_attribute(Gp_onset, kmeans, cluster_node_name)
     grp.node_to_edge_attribute(Gp_onset, cluster_node_name, cluster_edge_name, from_source=True)
 
-    condense(Gp_onset, cluster_node_name)
+    condense(Gp_onset, cluster_node_name, weight_attr='weight')
 
     # # Display onset segmentation graph
     # chord_labels = grp.to_node_dataframe(Gp_onset)
