@@ -53,10 +53,7 @@ def condense(g, merge_attr, weight_attr='weight'):
             else:
                 node_data[group] = {attr: [attr_data]}
 
-    # nx.set_node_attributes(D, node_data)
     nx.set_node_attributes(D, node_data)
-    print(grp.to_node_dataframe(D))
-    print(D.nodes)
 
     # Add and sum edge weights
     edge_data = {}
@@ -78,7 +75,7 @@ def condense(g, merge_attr, weight_attr='weight'):
             edge_data[(u_d, v_d)] = attr_data
 
     nx.set_edge_attributes(D, edge_data, weight_attr)
-    print(nx.to_pandas_edgelist(D))
+
     return D
 
 
