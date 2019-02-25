@@ -147,8 +147,8 @@ def draw(adjacency_matrix, node_order=None, node_labels=None, ax=None, **kwargs)
         weights /= 2.  # [0, 1]
 
         kwargs.setdefault('edge_color', weights)
-        # kwargs.setdefault('edge_vmin', 0.)
-        # kwargs.setdefault('edge_vmax', 1.)
+        kwargs.setdefault('edge_vmin', 0.)
+        kwargs.setdefault('edge_vmax', 1.)
         kwargs['edge_vmin'] = 0.
         kwargs['edge_vmax'] = 1.
         kwargs.setdefault('edge_cmap', 'RdGy')

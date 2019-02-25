@@ -2,7 +2,7 @@ import numpy as np
 
 import fileutils
 import segmentation as seg
-import visualization as vis
+import visutils as vis
 
 
 # Applies a sliding window matched filter using ref as the reference signal and segments of

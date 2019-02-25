@@ -5,7 +5,7 @@ from scipy.ndimage.morphology import (generate_binary_structure,
                                       iterate_structure, binary_erosion)
 
 import fileutils
-import visualization as vis
+import visutils as vis
 import config as cfg
 
 # Modified from Dejavu Fingerprinting System (as of 11/21/18)

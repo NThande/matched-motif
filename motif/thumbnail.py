@@ -2,7 +2,7 @@ import numpy as np
 import fileutils
 import fingerprint as fp
 import segmentation as seg
-import visualization as vis
+import visutils as vis
 
 
 # Apply a sliding window of a part of the song to the rest of the song

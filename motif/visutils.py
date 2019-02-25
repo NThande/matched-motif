@@ -7,6 +7,7 @@ import networkx as nx
 import arcgraph as arc
 import pandas as pd
 import config as cfg
+import graphutils as grp
 
 
 def get_axes(ax):
@@ -147,12 +148,14 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
 
 # Draw Chord diagram of graph g
 def draw_chordgraph(g,
-                    node_labels=None,
+                    node_data=None,
                     label_col='index',
                     size=200,
                     cmap='Category20',
                     title='',
-                    draw_labels=True):
+                    draw_labels=True,
+                    edge_color='source',
+                    node_color='index'):
     hv.extension('bokeh')
     hv.output(size=size)
 
@@ -160,8 +163,9 @@ def draw_chordgraph(g,
     edge_g = nx.to_pandas_edgelist(g)
 
     # Account for passed in node dataset
-    if node_labels is not None:
-        chord = hv.Chord((edge_g, node_labels), label=title).select(value=(5, None))
+    if node_data is not None:
+        node_dataset = hv.Dataset(pd.DataFrame(node_data), 'index')
+        chord = hv.Chord((edge_g, node_dataset), label=title).select(value=(5, None))
     else:
         chord = hv.Chord(edge_g, label=title)
         label_col = 'index'
@@ -171,29 +175,18 @@ def draw_chordgraph(g,
         chord.opts(
             hv.opts.Chord(
                 cmap=cmap, edge_cmap=cmap,
-                edge_color=hv.dim('source').str(),
-                node_color=hv.dim('index').str(),
+                edge_color=hv.dim(edge_color).str(),
+                node_color=hv.dim(node_color).str(),
                 labels=label_col
             ))
     else:
         chord.opts(
             hv.opts.Chord(cmap=cmap, edge_cmap=cmap,
-                          edge_color=hv.dim('source').str(),
-                          node_color=hv.dim('index').str()
+                          edge_color=hv.dim(edge_color).str(),
+                          node_color=hv.dim(node_color).str()
                           ))
     c = hv.render(chord, backend='bokeh')
     return c
-
-
-# Create labels for a chord graph and an arcgraph
-def _create_node_labels(g, label_col='label', node_attr='label'):
-    label_dataset = {label_col: []}
-    node_dict = {}
-    for i in g.nodes:
-        label_dataset[label_col].append(g.nodes[i][node_attr])
-        node_dict[i] = g.nodes[i][node_attr]
-    nodes_dataset = hv.Dataset(pd.DataFrame(label_dataset), 'index')
-    return nodes_dataset, node_dict
 
 
 # Draw a simple circular node graph of g
@@ -220,7 +213,7 @@ def draw_arcgraph(g, ax=None,
                   **kwargs
                   ):
     adj_G = nx.to_numpy_array(g, weight=weight_attr)
-    vertical_shift=kwargs.setdefault('vertical_shift', 2)
+    vertical_shift = kwargs.setdefault('vertical_shift', 2)
     ax = get_axes(ax)
 
     # Draw arcgraph according to arguments
@@ -263,10 +256,11 @@ def main():
         nx.set_node_attributes(G, {i: {'label': 'N{}'.format(i)}})
     for u, v in G.edges():
         nx.set_edge_attributes(G, {(u, v): {'value': np.random.randint(0, 100)}})
-    nodes_dataset, node_dict = _create_node_labels(G)
+    node_data = grp.to_node_dataframe(G)
+    node_dict = grp.to_node_dict(G)
     draw_netgraph(G)
     draw_arcgraph(G, node_labels=node_dict, node_size=35.)
-    c = draw_chordgraph(G, size=200, node_labels=nodes_dataset, label_col='label')
+    c = draw_chordgraph(G, size=200, node_data=node_data, label_col='label')
     show(c)
     show()
     return
