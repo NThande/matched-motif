@@ -79,7 +79,19 @@ def to_node_dict(g, node_attr='label'):
 
 
 def main():
-    return
+    # Simple adjacency matrix
+    adj = np.array([[0.1, 1, 1, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 0, 0]])
+    adj_2 = np.copy(adj)
+    adj_2[adj_2 < 1.] = 0
+    labels = ['Batman', 'Bane', 'Joker', 'Robin']
+    label_col= 'Super Hero'
+
+    G = adjacency_matrix_to_graph(adj, labels, label_col, prune=False)
+    G_thresh = adjacency_matrix_to_graph(adj_2, labels, label_col, prune=False)
+    G_prune = prune_graph(G)
+    print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes, G.edges))
+    print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes, G_thresh.edges))
+    print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes, G_prune.edges))
 
 
 if __name__ == '__main__':
