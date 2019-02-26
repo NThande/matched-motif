@@ -4,9 +4,9 @@ import numpy as np
 
 
 # Clustering and graph analysis functions
-def adjacency_matrix_to_graph(adj, labels, label_name, prune=False):
+def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     G = nx.DiGraph()
-    G = nx.from_numpy_array(adj, create_using=G)
+    G = nx.from_numpy_array(adjacency, create_using=G)
 
     # For labeling nodes in graphs
     add_node_attribute(G, labels, label_name)
@@ -22,6 +22,38 @@ def adjacency_matrix_to_graph(adj, labels, label_name, prune=False):
 
 def graph_to_adjacency_matrix(G, weight_attr='weight'):
     return nx.to_numpy_array(G, weight=weight_attr)
+
+
+# Generate an incidence matrix directly from an adjacency matrix
+def adjacency_to_incidence_matrix(adjacency, labels, prune=False):
+    num_nodes = adjacency.shape[0]
+    num_edges = np.count_nonzero(adjacency)
+    incidence = np.zeros((num_nodes, num_edges))
+    relabels = labels
+
+    (source_list, dest_list) = np.nonzero(adjacency)
+
+    for i in range(num_edges):
+        source = source_list[i]
+        dest = dest_list[i]
+        weight = adjacency[source][dest]
+        incidence[source][i] = weight
+        incidence[dest][i] = weight
+
+    if prune:
+        relabels = []
+        mask = np.ones(incidence.shape)
+        num_pruned = 0
+        for i in range(num_nodes):
+            if np.count_nonzero(incidence[i, :]) == 0:
+                mask[i, :] = np.zeros(num_edges)
+                num_pruned += 1
+            else:
+                relabels.append(labels[i])
+        incidence = incidence[mask != 0]
+        incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
+
+    return incidence, relabels
 
 
 # Returns a shallow copy of graph g with no isolated nodes.
@@ -144,12 +176,14 @@ def main():
     labels = ['Batman', 'Bane', 'Joker', 'Robin']
     label_col= 'Super Hero'
 
-    G = adjacency_matrix_to_graph(adj, labels, label_col, prune=False)
-    G_thresh = adjacency_matrix_to_graph(adj_2, labels, label_col, prune=False)
-    G_prune = prune_graph(G)
-    print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes(), G.edges()))
-    print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes(), G_thresh.edges()))
-    print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes(), G_prune.edges()))
+    # G = adjacency_matrix_to_graph(adj, labels, label_col, prune=False)
+    # G_thresh = adjacency_matrix_to_graph(adj_2, labels, label_col, prune=False)
+    # G_prune = prune_graph(G)
+    # print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes(), G.edges()))
+    # print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes(), G_thresh.edges()))
+    # print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes(), G_prune.edges()))
+    print(adjacency_to_incidence_matrix(adj, labels, prune=False))
+    print(adjacency_to_incidence_matrix(adj, labels, prune=True))
 
 
 if __name__ == '__main__':

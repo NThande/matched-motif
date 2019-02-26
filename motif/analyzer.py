@@ -20,6 +20,7 @@ def analyze(audio, fs,
             seg_method='onset',
             cluster_method='kmeans',
             similarity_method='match',
+            with_graph=True,
             **kwargs):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = thumbnail(audio, fs,

@@ -39,8 +39,6 @@ def segmentation_experiment(audio, fs, length, name='audio', show_plot=None):
     if 'chord' in show_plot:
         for c in chords:
             vis.show(c)
-    if 'arc' in show_plot or 'matrix' in show_plot:
-        vis.show()
     return G_set
 
 
@@ -98,8 +96,6 @@ def k_means_experiment(audio, fs, length, name='audio', show_plot=None,
     if 'chord' in show_plot:
         for c in chords:
             vis.show(c)
-    if 'arc' in show_plot:
-        vis.show()
     return G_set
 
 
@@ -108,8 +104,9 @@ def main():
     directory = "./bin/labelled"
     audio, fs = fileutils.load_audio(name, audio_dir=directory)
     length = 3
-    segmentation_experiment(audio, fs, length, name=name, show_plot=('arc', 'matrix'))
+    # segmentation_experiment(audio, fs, length, name=name, show_plot='arc')
     k_means_experiment(audio, fs, length, name=name, show_plot='arc')
+    vis.show()
     return
 
 
