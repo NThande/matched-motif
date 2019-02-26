@@ -6,7 +6,6 @@ import config as cfg
 
 # Choose a segmentation method from a given input
 def segment(audio, fs, length=2, overlap=0.5, method='regular', **kwargs):
-    # Choose segmentation method
     segments = None
     if method is 'regular':
         segments = segment_regular(audio, fs, length=length, overlap=overlap, **kwargs)

@@ -2,81 +2,39 @@ import networkx as nx
 import fileutils
 import matchfilt as mf
 import numpy as np
-from sklearn import cluster
+from sklearn import cluster as skcluster
 import visutils as vis
-import graphutils as grp
+import graphutils as graph
+
+
+# Choose a clustering method from a given input
+def cluster(g, k_clusters, method='kmeans', **kwargs):
+    clusters = None
+    if method is 'kmeans':
+        clusters = k_means(g, k_clusters, **kwargs)
+    elif method is 'agglom':
+        clusters = agglom(g, k_clusters, **kwargs)
+    else:
+        print("Unrecognized clustering method: {}".format(method))
+    return clusters
 
 
 # Cluster using k means with k_clusters clusters
-def cluster_k_means(g, k_clusters, incidence=None, weight='weight', n_init=200):
+def k_means(g, k_clusters, incidence=None, weight='weight', n_init=200, **kwargs):
     if incidence is None:
         incidence = nx.incidence_matrix(g, weight=weight)
-    kmeans_clf = cluster.KMeans(n_clusters=k_clusters, n_init=n_init)
+    kmeans_clf = skcluster.KMeans(n_clusters=k_clusters, n_init=n_init)
     kmeans = kmeans_clf.fit_predict(incidence)
     return kmeans
 
 
 # Cluster using agglomerative clustering, starting with k_clusters clusters.
-def cluster_agglom(g, k_clusters=2, incidence=None, weight='weight', linkage='ward'):
+def agglom(g, k_clusters=2, incidence=None, weight='weight', linkage='ward', **kwargs):
     if incidence is None:
         incidence = nx.incidence_matrix(g, weight=weight)
-    agglom_clf = cluster.AgglomerativeClustering(n_clusters=k_clusters, linkage=linkage)
+    agglom_clf = skcluster.AgglomerativeClustering(n_clusters=k_clusters, linkage=linkage)
     agglom = agglom_clf.fit_predict(incidence)
     return agglom
-
-
-# Condense to a minor graph, using merge_attr as the new graph indices.
-# Maintains only the sum of weight_attr of edges between different groups.
-def condense(g, merge_attr, weight_attr='weight'):
-    D = nx.DiGraph()
-
-    # Construct the merged graph
-    node_data = {}
-    for i in g.nodes:
-        group = g.nodes[i][merge_attr]
-
-        # Add new node if not in graph
-        if group not in D:
-            D.add_node(group)
-
-        # Add node attributes to graph
-        for attr in g.nodes[i]:
-            if attr is merge_attr:
-                continue
-            attr_data = g.nodes[i][attr]
-
-            if group in node_data:
-                if attr in node_data[group]:
-                    node_data[group][attr].append(attr_data)
-                else:
-                    node_data[group][attr] = [attr_data]
-            else:
-                node_data[group] = {attr: [attr_data]}
-
-    nx.set_node_attributes(D, node_data)
-
-    # Add and sum edge weights
-    edge_data = {}
-    for u, v in g.edges:
-        u_d = g.nodes[u][merge_attr]
-        v_d = g.nodes[v][merge_attr]
-
-        # No self loops
-        if u_d == v_d:
-            continue
-
-        if (u_d, v_d) not in D.edges:
-            D.add_edge(u_d, v_d)
-
-        attr_data = g.edges[u, v][weight_attr]
-        if (u_d, v_d) in edge_data:
-            edge_data[(u_d, v_d)] += attr_data
-        else:
-            edge_data[(u_d, v_d)] = attr_data
-
-    nx.set_edge_attributes(D, edge_data, weight_attr)
-
-    return D
 
 
 def main():
@@ -124,48 +82,49 @@ def main():
 
     # Create onset segmentation graph
     adj_onset[adj_onset < 50.] = 0
-    G_onset = grp.adjacency_matrix_to_graph(adj_onset, onset_labels, label_name, prune=False)
-    Gp_onset = grp.prune_graph(G_onset)
+    G_onset = graph.adjacency_matrix_to_graph(adj_onset, onset_labels, label_name, prune=False)
+    Gp_onset = graph.prune_graph(G_onset)
 
     # Test K means clustering (adding 1 to avoid group 0)
-    kmeans = cluster_k_means(Gp_onset, k_clusters, n_init=200)
+    kmeans = k_means(Gp_onset, k_clusters, n_init=200)
     group_color = kmeans / np.max(kmeans)
 
-    grp.add_node_attribute(Gp_onset, kmeans, cluster_node_name)
-    grp.node_to_edge_attribute(Gp_onset, cluster_node_name, cluster_edge_name, from_source=True)
+    graph.add_node_attribute(Gp_onset, kmeans, cluster_node_name)
+    graph.node_to_edge_attribute(Gp_onset, cluster_node_name, cluster_edge_name, from_source=True)
 
-    condense(Gp_onset, cluster_node_name, weight_attr='weight')
+    # Gc_onset = condense(Gp_onset, cluster_node_name, weight_attr='weight')
 
-    # # Display onset segmentation graph
-    # chord_labels = grp.to_node_dataframe(Gp_onset)
-    # arc_labels = grp.to_node_dict(Gp_onset, node_attr=label_name)
-    #
-    # c_onset = vis.draw_chordgraph(Gp_onset,
-    #                               node_data=chord_labels,
-    #                               label_col=label_name,
-    #                               title='Chord Graph Of Onset Segmentation')
-    #
-    # c_onset_k = vis.draw_chordgraph(Gp_onset,
-    #                                 node_data=chord_labels,
-    #                                 label_col=label_name,
-    #                                 title='Chord Graph Of Onset Segmentation '
-    #                                       'with {}-means clustering'.format(k_clusters),
-    #                                 node_color=cluster_node_name,
-    #                                 edge_color=cluster_edge_name)
-    #
-    # ax = vis.draw_netgraph(Gp_onset, node_color=group_color)
-    # ax.set_title("Network graph of Onset Segmentation")
-    #
-    # ax = vis.draw_arcgraph(Gp_onset,
-    #                        node_size=30.,
-    #                        node_order=range(0, nx.number_of_nodes(Gp_onset)),
-    #                        node_labels=arc_labels,
-    #                        node_color=group_color
-    #                        )
-    # ax.set_title("Time-Ordered ArcGraph of Onset Segmentation")
-    #
-    # vis.show(c_onset)
-    # vis.show(c_onset_k)
+    # Display onset segmentation graph
+    chord_labels = graph.to_node_dataframe(Gp_onset)
+    arc_labels = graph.to_node_dict(Gp_onset, node_attr=label_name)
+
+
+    c_onset = vis.draw_chordgraph(Gp_onset,
+                                  node_data=chord_labels,
+                                  label_col=label_name,
+                                  title='Chord Graph Of Onset Segmentation')
+
+    c_onset_k = vis.draw_chordgraph(Gp_onset,
+                                    node_data=chord_labels,
+                                    label_col=label_name,
+                                    title='Chord Graph Of Onset Segmentation '
+                                          'with {}-means clustering'.format(k_clusters),
+                                    node_color=cluster_node_name,
+                                    edge_color=cluster_edge_name)
+
+    ax = vis.draw_netgraph(Gp_onset, node_color=group_color)
+    ax.set_title("Network graph of Onset Segmentation")
+
+    ax = vis.draw_arcgraph(Gp_onset,
+                           node_size=30.,
+                           node_order=range(0, nx.number_of_nodes(Gp_onset)),
+                           node_labels=arc_labels,
+                           node_color=group_color
+                           )
+    ax.set_title("Time-Ordered ArcGraph of Onset Segmentation")
+
+    vis.show(c_onset)
+    vis.show(c_onset_k)
     # vis.show()
 
 

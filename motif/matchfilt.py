@@ -20,7 +20,7 @@ def matched_filter(ref, sig, segments):
 
 # Using a series of windowed matched filters of length window_length (in seconds)
 # on sound with sampling frequency fs, identify the audio thumbnail
-def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
+def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwargs):
     segments = seg.segment(audio, fs, length=length, method=seg_method)
     seg_samples = segments * fs
     num_windows = segments.shape[0]

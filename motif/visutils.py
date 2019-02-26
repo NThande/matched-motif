@@ -7,7 +7,7 @@ import networkx as nx
 import arcgraph as arc
 import pandas as pd
 import config as cfg
-import graphutils as grp
+import graphutils as graph
 
 
 def get_axes(ax):
@@ -37,6 +37,7 @@ def add_motif_labels(ax, labels):
     return ax
 
 
+# Plot the input similarity matrix using matplotlib
 def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     ax = get_axes(ax)
     num_windows = similarity_matrix.shape[0]
@@ -50,6 +51,7 @@ def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     return ax
 
 
+# Plot the overlap of the segments in a staircase format
 def plot_window_overlap(segments, seg_lengths, tick_step=1, ax=None):
     ax = get_axes(ax)
 
@@ -73,6 +75,7 @@ def plot_window_overlap(segments, seg_lengths, tick_step=1, ax=None):
     return ax
 
 
+# Plot the input short-term Fourier Transform
 def plot_stft(sxx, fs=cfg.FS, ax=None, frames=False,
               hop_length=(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO)):
     ax = get_axes(ax)
@@ -242,6 +245,7 @@ def draw_arcgraph(g, ax=None,
     return ax
 
 
+# Show a specific chord plot or all the matplotlib plots
 def show(chord=None):
     if chord is not None:
         bkplt.show(chord)
@@ -256,8 +260,8 @@ def main():
         nx.set_node_attributes(G, {i: {'label': 'N{}'.format(i)}})
     for u, v in G.edges():
         nx.set_edge_attributes(G, {(u, v): {'value': np.random.randint(0, 100)}})
-    node_data = grp.to_node_dataframe(G)
-    node_dict = grp.to_node_dict(G)
+    node_data = graph.to_node_dataframe(G)
+    node_dict = graph.to_node_dict(G)
     draw_netgraph(G)
     draw_arcgraph(G, node_labels=node_dict, node_size=35.)
     c = draw_chordgraph(G, size=200, node_data=node_data, label_col='label')

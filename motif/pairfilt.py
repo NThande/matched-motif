@@ -8,7 +8,7 @@ import visutils as vis
 # Apply a sliding window of a part of the song to the rest of the song
 def thumbnail(audio, fs, audio_pairs, window_length=2, overlap=0.5):
     segments = seg.segment_regular(audio, fs, length=window_length, overlap=overlap)
-    print(segments)
+    # print(segments)
     num_segments = segments.shape[0]
     seg_matches = np.zeros(num_segments)
 
@@ -22,14 +22,14 @@ def thumbnail(audio, fs, audio_pairs, window_length=2, overlap=0.5):
         segment_hits = fp.linear_search(audio_pairs, seg_pairs)
 
         seg_matches[i] = np.average(segment_hits)
-        print("Completed Window {} / {}".format(i + 1, num_segments))
+        # print("Completed Window {} / {}".format(i + 1, num_segments))
 
     # Normalize and identify maximum window
     seg_matches = seg_matches / np.max(seg_matches)
     thumb_idx = np.argmax(seg_matches)
     thumb_segment = audio[int(segments[thumb_idx] * fs): int(segments[thumb_idx] * fs)]
 
-    print("Thumbnail complete")
+    # print("Thumbnail complete")
     return thumb_segment, seg_matches, segments
 
 

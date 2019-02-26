@@ -43,29 +43,29 @@ def add_edge_attribute(g, edge_attribute, attr_name):
 # Copy a named edge attribute in graph g
 def copy_edge_attribute(g, old_attr, new_attr):
     for u, v in g.edges():
-        old_val = g.edges[u, v][old_attr]
+        old_val = g.edges()[u, v][old_attr]
         nx.set_edge_attributes(g, {(u, v): {new_attr: old_val}})
 
 
 # Add an attribute from a node to each edge
 def node_to_edge_attribute(g, node_attr, edge_attr, from_source=True):
-    for u, v in g.edges:
+    for u, v in g.edges():
         if from_source:
-            node_val = g.nodes[u][node_attr]
+            node_val = g.nodes()[u][node_attr]
         else:
-            node_val = g.nodes[v][node_attr]
+            node_val = g.nodes()[v][node_attr]
         nx.set_edge_attributes(g, {(u, v): {edge_attr: node_val}})
 
 
 # Create node dataset for a chord graph using all node attributes.
 def to_node_dataframe(g):
     node_data = {}
-    for i in g.nodes:
-        for attr in g.nodes[i]:
+    for i in g.nodes():
+        for attr in g.nodes()[i]:
             if attr in node_data:
-                node_data[attr].append(g.nodes[i][attr])
+                node_data[attr].append(g.nodes()[i][attr])
             else:
-                node_data[attr] = [g.nodes[i][attr]]
+                node_data[attr] = [g.nodes()[i][attr]]
 
     return pd.DataFrame(node_data)
 
@@ -73,9 +73,63 @@ def to_node_dataframe(g):
 # Creates a dictionary of node indices to labels using the node attribute as a label.
 def to_node_dict(g, node_attr='label'):
     node_dict = {}
-    for i in g.nodes:
-        node_dict[i] = g.nodes[i][node_attr]
+    for i in g.nodes():
+        node_dict[i] = g.nodes()[i][node_attr]
     return node_dict
+
+
+# Condense to a minor graph, using merge_attr as the new graph indices.
+# Maintains only the sum of weight_attr of edges between different groups.
+def condense_by_attr(g, merge_attr, weight_attr='weight'):
+    D = nx.DiGraph()
+
+    # Construct the merged graph
+    node_data = {}
+    for i in g.nodes():
+        group = g.nodes()[i][merge_attr]
+
+        # Add new node if not in graph
+        if group not in D:
+            D.add_node(group)
+
+        # Add node attributes to graph
+        for attr in g.nodes()[i]:
+            if attr is merge_attr:
+                continue
+            attr_data = g.nodes()[i][attr]
+
+            if group in node_data:
+                if attr in node_data[group]:
+                    node_data[group][attr].append(attr_data)
+                else:
+                    node_data[group][attr] = [attr_data]
+            else:
+                node_data[group] = {attr: [attr_data]}
+
+    nx.set_node_attributes(D, node_data)
+
+    # Add and sum edge weights
+    edge_data = {}
+    for u, v in g.edges():
+        u_d = g.nodes()[u][merge_attr]
+        v_d = g.nodes()[v][merge_attr]
+
+        # No self loops
+        if u_d == v_d:
+            continue
+
+        if (u_d, v_d) not in D.edges():
+            D.add_edge(u_d, v_d)
+
+        attr_data = g.edges()[u, v][weight_attr]
+        if (u_d, v_d) in edge_data:
+            edge_data[(u_d, v_d)] += attr_data
+        else:
+            edge_data[(u_d, v_d)] = attr_data
+
+    nx.set_edge_attributes(D, edge_data, weight_attr)
+
+    return D
 
 
 def main():
@@ -89,9 +143,9 @@ def main():
     G = adjacency_matrix_to_graph(adj, labels, label_col, prune=False)
     G_thresh = adjacency_matrix_to_graph(adj_2, labels, label_col, prune=False)
     G_prune = prune_graph(G)
-    print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes, G.edges))
-    print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes, G_thresh.edges))
-    print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes, G_prune.edges))
+    print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes(), G.edges()))
+    print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes(), G_thresh.edges()))
+    print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes(), G_prune.edges()))
 
 
 if __name__ == '__main__':
