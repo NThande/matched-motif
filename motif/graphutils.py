@@ -20,6 +20,10 @@ def adjacency_matrix_to_graph(adj, labels, label_name, prune=False):
     return G
 
 
+def graph_to_adjacency_matrix(G, weight_attr='weight'):
+    return nx.to_numpy_array(G, weight=weight_attr)
+
+
 # Returns a shallow copy of graph g with no isolated nodes.
 def prune_graph(g):
     D = nx.DiGraph(g)
