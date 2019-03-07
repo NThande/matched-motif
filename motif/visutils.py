@@ -1,11 +1,11 @@
-import librosa.display
-import numpy as np
-import holoviews as hv
 import bokeh.plotting as bkplt
+import holoviews as hv
+import librosa.display
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+
 import arcgraph as arc
-import pandas as pd
 import config as cfg
 import graphutils as graph
 
@@ -164,11 +164,12 @@ def draw_chordgraph(g,
 
     # Get the edge list of the graph
     edge_g = nx.to_pandas_edgelist(g)
+    val_loc = edge_g.columns.get_loc("value")
 
     # Account for passed in node dataset
     if node_data is not None:
-        node_dataset = hv.Dataset(pd.DataFrame(node_data), 'index')
-        chord = hv.Chord((edge_g, node_dataset), label=title).select(value=(5, None))
+        node_dataset = hv.Dataset(node_data, 'index')
+        chord = hv.Chord((edge_g, node_dataset), label=title).select(value=(val_loc, None))
     else:
         chord = hv.Chord(edge_g, label=title)
         label_col = 'index'

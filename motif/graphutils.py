@@ -1,9 +1,14 @@
 import networkx as nx
-import pandas as pd
 import numpy as np
+import pandas as pd
+
+import config as cfg
+import fileutils
 
 
 # Clustering and graph analysis functions
+
+
 def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     G = nx.DiGraph()
     G = nx.from_numpy_array(adjacency, create_using=G)
@@ -25,6 +30,7 @@ def graph_to_adjacency_matrix(G, weight_attr='weight'):
 
 
 # Generate an incidence matrix directly from an adjacency matrix
+# Useful for running clustering more quickly.
 def adjacency_to_incidence_matrix(adjacency, labels, prune=False):
     num_nodes = adjacency.shape[0]
     num_edges = np.count_nonzero(adjacency)
@@ -54,6 +60,44 @@ def adjacency_to_incidence_matrix(adjacency, labels, prune=False):
         incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
 
     return incidence, relabels
+
+
+# Construct a graph from a pandas dataframe
+def from_pandas_labels(df):
+    num_nodes = len(df.index) - 1
+    adjacency = np.zeros((num_nodes, num_nodes)).astype('int')
+    labels = []
+    groups = []
+    group_nodes = {}
+
+    # Extract label information
+    for i in range(num_nodes):
+        seg_label = '{start:2.2f} - {end:2.2f}'.format(start=df.Time[i], end=df.Time[i + 1])
+        group_label = df.Event[i]
+
+        if group_label in group_nodes:
+            group_nodes[group_label].append(i)
+        else:
+            group_nodes[group_label] = [i]
+
+        labels.append(seg_label)
+        groups.append(group_label)
+
+    # Add edges
+    for grp in group_nodes:
+        nodes = group_nodes[grp]
+        base = nodes[0]
+        for i in nodes:
+            if i == base:
+                continue
+            adjacency[i, base] = 50
+            # adjacency[base, i] = 1
+
+    G = adjacency_matrix_to_graph(adjacency, labels, cfg.NODE_LABEL, prune=False)
+    add_node_attribute(G, groups, cfg.CLUSTER_NAME)
+    node_to_edge_attribute(G, cfg.CLUSTER_NAME, cfg.CLUSTER_EDGE_NAME, from_source=True)
+
+    return G
 
 
 # Returns a shallow copy of graph g with no isolated nodes.
@@ -171,11 +215,11 @@ def condense_by_attr(g, merge_attr, weight_attr='weight'):
 def main():
     # Simple adjacency matrix
     adj = np.array([[0.1, 1, 1, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 0, 0]])
-    adj_2 = np.copy(adj)
-    adj_2[adj_2 < 1.] = 0
+    # adj_2 = np.copy(adj)
+    # adj_2[adj_2 < 1.] = 0
     labels = ['Batman', 'Bane', 'Joker', 'Robin']
-    label_col= 'Super Hero'
-
+    # label_col= 'Super Hero'
+    #
     # G = adjacency_matrix_to_graph(adj, labels, label_col, prune=False)
     # G_thresh = adjacency_matrix_to_graph(adj_2, labels, label_col, prune=False)
     # G_prune = prune_graph(G)
@@ -184,6 +228,13 @@ def main():
     # print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes(), G_prune.edges()))
     print(adjacency_to_incidence_matrix(adj, labels, prune=False))
     print(adjacency_to_incidence_matrix(adj, labels, prune=True))
+
+    # name = 't3_train'
+    # directory = "./bin/labelled"
+    # audio_labels = fileutils.load_labels(name, label_dir=directory)
+    # G = from_pandas_labels(audio_labels)
+    # print(G.nodes[0])
+    # print(type(G))
 
 
 if __name__ == '__main__':

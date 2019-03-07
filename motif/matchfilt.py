@@ -54,6 +54,7 @@ def main():
     directory = "./bin/labelled"
     audio, fs = fileutils.load_audio(name, audio_dir=directory)
     audio_labels = fileutils.load_labels(name, label_dir=directory)
+    print(audio_labels)
 
     thumb, similarity, segments, sim_matrix = thumbnail(audio, fs, length=2)
 
