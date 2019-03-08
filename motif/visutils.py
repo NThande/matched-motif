@@ -163,15 +163,23 @@ def draw_chordgraph(g,
     hv.output(size=size)
 
     # Get the edge list of the graph
-    edge_g = nx.to_pandas_edgelist(g)
-    val_loc = edge_g.columns.get_loc("value")
+    edge_data = nx.to_pandas_edgelist(g)
+
+    # Enforce that the value column is in the right position in the dataframe
+    val_loc = 2
+    cur_loc = edge_data.columns.get_loc("value")
+    cols = list(edge_data.columns.values)
+    swap = cols[val_loc]
+    cols[val_loc] = cols[cur_loc]
+    cols[cur_loc] = swap
+    edge_data = edge_data.reindex(columns=cols)
 
     # Account for passed in node dataset
     if node_data is not None:
         node_dataset = hv.Dataset(node_data, 'index')
-        chord = hv.Chord((edge_g, node_dataset), label=title).select(value=(val_loc, None))
+        chord = hv.Chord((edge_data, node_dataset), label=title).select(value=(5, None))
     else:
-        chord = hv.Chord(edge_g, label=title)
+        chord = hv.Chord(edge_data, label=title)
         label_col = 'index'
 
     # Draw the desired graph
@@ -181,7 +189,7 @@ def draw_chordgraph(g,
                 cmap=cmap, edge_cmap=cmap,
                 edge_color=hv.dim(edge_color).str(),
                 node_color=hv.dim(node_color).str(),
-                labels=label_col
+                labels=label_col,
             ))
     else:
         chord.opts(

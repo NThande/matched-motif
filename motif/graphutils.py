@@ -3,11 +3,9 @@ import numpy as np
 import pandas as pd
 
 import config as cfg
-import fileutils
 
 
 # Clustering and graph analysis functions
-
 
 def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     G = nx.DiGraph()
@@ -16,8 +14,12 @@ def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     # For labeling nodes in graphs
     add_node_attribute(G, labels, label_name)
 
-    # For drawing arc graphs
-    copy_edge_attribute(G, old_attr='weight', new_attr='value')
+    # For drawing arc graphs, copy the weight attribute to an integer value
+    edge_dict = {}
+    for u, v in G.edges():
+        old_val = G.edges()[u, v]['weight']
+        edge_dict[(u, v)] = {'value': int(old_val)}
+    nx.set_edge_attributes(G, edge_dict)
 
     # Prune isolated nodes
     if prune:
@@ -118,13 +120,6 @@ def add_node_attribute(g, node_attribute, attr_name):
 def add_edge_attribute(g, edge_attribute, attr_name):
     for u, v in g.edges():
         nx.set_edge_attributes(g, {(u, v): {attr_name: edge_attribute[u, v]}})
-
-
-# Copy a named edge attribute in graph g
-def copy_edge_attribute(g, old_attr, new_attr):
-    for u, v in g.edges():
-        old_val = g.edges()[u, v][old_attr]
-        nx.set_edge_attributes(g, {(u, v): {new_attr: old_val}})
 
 
 # Add an attribute from a node to each edge
