@@ -10,6 +10,7 @@ import config as cfg
 def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     G = nx.DiGraph()
     G = nx.from_numpy_array(adjacency, create_using=G)
+    node_idx = np.arange(adjacency.shape[0])
 
     # For labeling nodes in graphs
     add_node_attribute(G, labels, label_name)
@@ -23,8 +24,8 @@ def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
 
     # Prune isolated nodes
     if prune:
-        G = prune_graph(G)
-    return G
+        G, node_idx = prune_graph(G)
+    return G, node_idx
 
 
 def graph_to_adjacency_matrix(G, weight_attr='weight'):
@@ -33,11 +34,11 @@ def graph_to_adjacency_matrix(G, weight_attr='weight'):
 
 # Generate an incidence matrix directly from an adjacency matrix
 # Useful for running clustering more quickly.
-def adjacency_to_incidence_matrix(adjacency, labels, prune=False):
+def adjacency_to_incidence_matrix(adjacency, prune=False):
     num_nodes = adjacency.shape[0]
     num_edges = np.count_nonzero(adjacency)
     incidence = np.zeros((num_nodes, num_edges))
-    relabels = labels
+    label_idx = np.arange(num_nodes)
 
     (source_list, dest_list) = np.nonzero(adjacency)
 
@@ -49,19 +50,21 @@ def adjacency_to_incidence_matrix(adjacency, labels, prune=False):
         incidence[dest][i] = weight
 
     if prune:
-        relabels = []
-        mask = np.ones(incidence.shape)
-        num_pruned = 0
-        for i in range(num_nodes):
-            if np.count_nonzero(incidence[i, :]) == 0:
-                mask[i, :] = np.zeros(num_edges)
-                num_pruned += 1
-            else:
-                relabels.append(labels[i])
-        incidence = incidence[mask != 0]
-        incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
+        incidence, relabel_idx = prune_incidence(incidence)
+        label_idx = label_idx[relabel_idx]
+        # relabels = []
+        # mask = np.ones(incidence.shape)
+        # num_pruned = 0
+        # for i in range(num_nodes):
+        #     if np.count_nonzero(incidence[i, :]) == 0:
+        #         mask[i, :] = np.zeros(num_edges)
+        #         num_pruned += 1
+        #     else:
+        #         relabels.append(labels[i])
+        # incidence = incidence[mask != 0]
+        # incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
 
-    return incidence, relabels
+    return incidence, label_idx
 
 
 # Construct a graph from a pandas dataframe
@@ -95,7 +98,7 @@ def from_pandas_labels(df):
             adjacency[i, base] = 50
             # adjacency[base, i] = 1
 
-    G = adjacency_matrix_to_graph(adjacency, labels, cfg.NODE_LABEL, prune=False)
+    G, _ = adjacency_matrix_to_graph(adjacency, labels, cfg.NODE_LABEL, prune=False)
     add_node_attribute(G, groups, cfg.CLUSTER_NAME)
     node_to_edge_attribute(G, cfg.CLUSTER_NAME, cfg.CLUSTER_EDGE_NAME, from_source=True)
 
@@ -105,9 +108,34 @@ def from_pandas_labels(df):
 # Returns a shallow copy of graph g with no isolated nodes.
 def prune_graph(g):
     D = nx.DiGraph(g)
-    D.remove_nodes_from(list(nx.isolates(D)))
+    isolate_idx = list(nx.isolates(D))
+    D.remove_nodes_from(isolate_idx)
     D = nx.convert_node_labels_to_integers(D)
-    return D
+
+    label_idx = np.arange(len(g.nodes))
+    mask = np.ones(label_idx.shape, dtype=int)
+    isolate_idx = np.array(isolate_idx, dtype=int)
+    mask[isolate_idx] = 0
+    label_idx = label_idx[mask == 1]
+    return D, label_idx
+
+
+def prune_incidence(incidence):
+    label_idx = []
+    num_nodes = incidence.shape[0]
+    num_edges = incidence.shape[1]
+    mask = np.ones(incidence.shape)
+    num_pruned = 0
+    for i in range(num_nodes):
+        if np.count_nonzero(incidence[i, :]) == 0:
+            mask[i, :] = np.zeros(num_edges)
+            num_pruned += 1
+        else:
+            label_idx.append(i)
+    incidence = incidence[mask != 0]
+    incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
+
+    return incidence, label_idx
 
 
 # Add a node attribute from an array.
@@ -221,8 +249,8 @@ def main():
     # print("Regular Graph: \n Nodes: {} \n Edges: {}".format(G.nodes(), G.edges()))
     # print("Thresholded Graph: \n Nodes: {} \n Edges: {}".format(G_thresh.nodes(), G_thresh.edges()))
     # print("Pruned Graph: \n Nodes: {} \n Edges: {}".format(G_prune.nodes(), G_prune.edges()))
-    print(adjacency_to_incidence_matrix(adj, labels, prune=False))
-    print(adjacency_to_incidence_matrix(adj, labels, prune=True))
+    print(adjacency_to_incidence_matrix(adj, prune=False))
+    print(adjacency_to_incidence_matrix(adj, prune=True))
 
     # name = 't3_train'
     # directory = "./bin/labelled"

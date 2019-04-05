@@ -25,17 +25,19 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwa
     seg_samples = segments * fs
     num_windows = segments.shape[0]
     similarity = np.zeros(num_windows)
-    window_matches = np.zeros((num_windows, num_windows))
+    sim_matrix = np.zeros((num_windows, num_windows))
 
     # Calculate the matched filters
     for i in range(0, num_windows):
         cur_start = int(seg_samples[i])
         cur_end = int(seg_samples[i] + (length * fs))
         cur_sound = audio[cur_start: cur_end]
-        cur_matches = np.abs(matched_filter(cur_sound, audio, seg_samples))
+        # Only calculate forward similarity
+        cur_matches = np.abs(matched_filter(cur_sound, audio, seg_samples[i:]))
         if include_self is False:
-            cur_matches[i] = 0
-        window_matches[:, i] = cur_matches
+            # cur_matches[i] = 0
+            cur_matches[0] = 0
+        sim_matrix[:, i] = np.concatenate((np.zeros(i), cur_matches), axis=0)
         similarity[i] = np.sum(cur_matches)
         # print("Window {} / {} Complete".format(i + 1, num_windows))
 
@@ -46,15 +48,18 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwa
     thumb_end = int(seg_samples[thumb_idx] + (length * fs))
     thumb = audio[thumb_start: thumb_end]
 
-    return thumb, similarity, segments, window_matches
+    # Convert the matrix from triangular to symmetric
+    # sim_matrix = sim_matrix.T + sim_matrix
 
+    # Flatten out low similarity values
+    return thumb, similarity, segments, sim_matrix
 
 def main():
     name = 't3_train'
     directory = "./bin/labelled"
     audio, fs = fileutils.load_audio(name, audio_dir=directory)
     audio_labels = fileutils.load_labels(name, label_dir=directory)
-    print(audio_labels)
+    # print(audio_labels)
 
     thumb, similarity, segments, sim_matrix = thumbnail(audio, fs, length=2)
 

@@ -149,6 +149,10 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
     return ax
 
 
+def plot_motif_segmentation(audio, fs, labels, seg_starts, seg_ends):
+    return
+
+
 # Draw Chord diagram of graph g
 def draw_chordgraph(g,
                     node_data=None,
