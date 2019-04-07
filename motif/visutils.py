@@ -4,7 +4,6 @@ import librosa.display
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-
 import arcgraph as arc
 import config as cfg
 import graphutils as graph
@@ -24,16 +23,37 @@ def plot_similarity_curve(seg_similarity, segment_times, labels=None, ax=None, c
     ax.set_xlabel("Window Starting Point (s)")
     ax.set_ylabel("Window Similarity")
     if labels is not None:
-        ax = add_motif_labels(ax, labels)
+        ax = add_motif_labels_with_df(ax, labels)
     return ax
 
 
 # Add hand-labeled motifs to a similarity plot for a mf thumbnail
-def add_motif_labels(ax, labels):
+def add_motif_labels_with_df(ax, labels_df, alpha=0.2):
+    labels = labels_df['Event'].values
+    segments = labels_df['Time'].values
+    num_segments = segments.shape[0]
+
+    starts = segments[:num_segments-1]
+    ends = segments[1:]
+    labels = labels[:num_segments-1]
+
+    ax = add_motif_labels(ax, starts, ends, labels, alpha=alpha)
+    return ax
+
+
+# Add hand-labeled motifs to a similarity plot for a mf thumbnail
+def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
     ax.set_xlim(ax.get_xlim()[0] - 1, ax.get_xlim()[1] + 1)
-    for i in range(0, labels.shape[0] - 1):
-        ax.axvspan(labels.Time[i], labels.Time[i + 1], alpha=0.2, color=labels.Color[i],
-                   linestyle='-.', label='Event {}'.format(labels.Event[i]))
+    unique_motifs = {}
+    for i in range(0, starts.shape[0]):
+        this_label = int(labels[i])
+        if this_label in unique_motifs:
+            ax.axvspan(starts[i], ends[i], alpha=alpha, color='C{}'.format(labels[i]),
+                       linestyle='-.')
+        else:
+            unique_motifs[this_label] = 1
+            ax.axvspan(starts[i], ends[i], alpha=alpha, color='C{}'.format(this_label),
+                       linestyle='-.', label = 'Motif {}'.format(this_label))
     return ax
 
 
@@ -149,8 +169,16 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
     return ax
 
 
-def plot_motif_segmentation(audio, fs, labels, seg_starts, seg_ends):
-    return
+# Plot an audio segmentation on top of the audio waveform
+def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8):
+    ax = get_axes(ax)
+    librosa.display.waveplot(audio, fs, ax=ax, color='b')
+    labels = labels.astype(int)
+    add_motif_labels(ax, starts, ends, labels, alpha)
+    ax.set_xlabel("Time(s)")
+    ax.set_ylabel("Amplitude")
+    ax.legend()
+    return ax
 
 
 # Draw Chord diagram of graph g
@@ -228,7 +256,7 @@ def draw_arcgraph(g, ax=None,
                   edge_color=None,
                   **kwargs
                   ):
-    adj_G = nx.to_numpy_array(g, weight=weight_attr)
+    adj_G = np.tril(nx.to_numpy_array(g, weight=weight_attr))
     vertical_shift = kwargs.setdefault('vertical_shift', 2)
     ax = get_axes(ax)
 

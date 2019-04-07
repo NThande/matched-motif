@@ -19,7 +19,7 @@ def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     edge_dict = {}
     for u, v in G.edges():
         old_val = G.edges()[u, v]['weight']
-        edge_dict[(u, v)] = {'value': int(old_val)}
+        edge_dict[(u, v)] = {'value': int(old_val * 1000)}
     nx.set_edge_attributes(G, edge_dict)
 
     # Prune isolated nodes
