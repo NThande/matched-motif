@@ -1,23 +1,24 @@
+import hashlib
 import numpy as np
 from librosa import stft
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import (generate_binary_structure,
                                       iterate_structure, binary_erosion)
-
 import fileutils
 import visutils as vis
 import config as cfg
 
 # Modified from Dejavu Fingerprinting System (as of 11/21/18)
-FREQ_IDX = 0
-PEAK_TIME_IDX = 1
-PAIR_TIME_IDX = 2
-PAIR_TDELTA_IDX = 4
+FREQ_IDX = cfg.FREQ_IDX
+PEAK_TIME_IDX = FREQ_IDX + 1
+PAIR_TIME_IDX = cfg.PAIR_TIME_IDX
+PAIR_TDELTA_IDX = cfg.PAIR_TIME_IDX + 2
 DEFAULT_FAN_VALUE = 15
 DEFAULT_AMP_MIN = 10
 PEAK_NEIGHBORHOOD_SIZE = 20
 MIN_TIME_DELTA = 0
 MAX_TIME_DELTA = 200
+FINGERPRINT_REDUCTION = 10
 
 
 # FFT the channel, log transform output, find local maxima, then return
@@ -36,19 +37,23 @@ def fingerprint(audio,
                )
 
     sxx = np.abs(sxx)
+    # sxx = 10 * np.log10(sxx)
+    sxx[sxx == -np.inf] = 0  # replace infs with zeros
 
     # find local maxima
     peaks_f, peaks_t = get_2d_peaks(sxx, amp_min=amp_min)
     peaks = np.stack((peaks_f, peaks_t), axis=1)
-    pairs = generate_pairs(peaks, fan_value)
-    return peaks, pairs
+    pairs_hash, pairs_matrix = generate_pairs(peaks, fan_value)
+    return pairs_hash, pairs_matrix, peaks
 
 
 # Generate peak-pairs based on locally-sensitive target zone
 def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
     # peaks = np.unique(peaks, axis=0)
     num_peaks = peaks.shape[0]
-    pairs = np.zeros((0, 5))
+    pairs_matrix = np.zeros((0, 5))
+    pairs_hash = {}
+    encoding = 'utf-8'
 
     for i in range(num_peaks):
         for j in range(1, fan_value):
@@ -56,19 +61,28 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
 
                 freq1 = peaks[i, FREQ_IDX]
                 freq2 = peaks[i + j, FREQ_IDX]
+                f_delta = np.abs(freq2 - freq1)
                 t1 = peaks[i, PEAK_TIME_IDX]
                 t2 = peaks[i + j, PEAK_TIME_IDX]
                 t_delta = t2 - t1
 
                 if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
-                    pairs = np.vstack((pairs, np.array([freq1, freq2, t1, t2, t_delta])))
+                    pairs_matrix = np.vstack((pairs_matrix, np.array([freq1, freq2, t1, t2, t_delta])))
+                    h = hashlib.sha1(
+                        "{}|{}|{}".format(
+                            str(freq1).encode(encoding),
+                            str(t_delta).encode(encoding),
+                            str(f_delta).encode(encoding)
+                        ).encode(encoding))
+                    this_hash = h.hexdigest()[0:FINGERPRINT_REDUCTION]
+                    pairs_hash[this_hash] = t1
 
     # Return dummy entry
-    if pairs.shape[0] == 0:
+    if pairs_matrix.shape[0] == 0:
         print("No pairs found, only {} peaks".format(peaks.shape[0]))
-        return np.zeros((1, 5))
-    pairs = np.unique(pairs, axis=0)
-    return pairs
+        return {}, np.zeros((1, 5))
+    pairs_matrix = np.unique(pairs_matrix, axis=0)
+    return pairs_hash, pairs_matrix
 
 
 def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
@@ -98,6 +112,18 @@ def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
     time_idx = [x[0] for x in peaks_filtered]
 
     return frequency_idx, time_idx
+
+
+def hash_search(db_hashes, query_hashes):
+    offsets_list = []
+    for query in query_hashes:
+        if query in db_hashes:
+            t_offset = db_hashes[query] - query_hashes[query]
+            offsets_list.append(t_offset)
+    offsets = np.array(offsets_list)
+    buckets, _ = np.histogram(offsets)
+    matches = np.max(buckets)
+    return matches
 
 
 # Search fingerprint song_fp for entries from fingerprint sample_fp
@@ -136,13 +162,24 @@ def search_col(data, query, tol=0):
 
 
 def main():
-    audio, fs = fileutils.load_audio('t1', './bin/')
-    peaks, pairs = fingerprint(audio)
+    name = 'genre_test_3'
+    directory = "./bin/labelled"
+    audio, fs = fileutils.load_audio(name, audio_dir=directory)
+    pairs_hash, pairs, peaks  = fingerprint(audio)
+
     sxx = stft(audio,
                n_fft=cfg.WINDOW_SIZE,
                win_length=cfg.WINDOW_SIZE,
                hop_length=int(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO),
                window='hann')
+    sxx = np.abs(sxx)
+    sxx = 10 * np.log10(sxx)
+    sxx[sxx == -np.inf] = 0  # replace infs with zeros
+
+    seg_hash_one, _, _ = fingerprint(audio[0 * fs: 3 * fs])
+    seg_hash_two, _, _ = fingerprint(audio[0 * fs: 3 * fs])
+    print(hash_search(seg_hash_one, seg_hash_two))
+
     vis.plot_stft(sxx, fs=fs, frames=False)
     vis.plot_peaks(peaks)
     vis.plot_pairs(peaks, pairs)

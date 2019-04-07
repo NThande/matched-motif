@@ -22,35 +22,37 @@ def matched_filter(ref, sig, segments):
 # on sound with sampling frequency fs, identify the audio thumbnail
 def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwargs):
     # Segment the audio
-    segments = seg.segment(audio, fs, length=length, method=seg_method)
-    segments_in_samples = segments * fs
+    segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)
+    segments = segments_in_seconds * fs
 
     # Calculate the self-similarity matrix
-    num_windows = segments.shape[0]
-    similarity = np.zeros((num_windows, num_windows))
+    num_segments = segments_in_seconds.shape[0]
+    similarity = np.zeros((num_segments, num_segments))
 
-    for i in range(0, num_windows):
-        cur_start = int(segments_in_samples[i])
-        cur_end = int(segments_in_samples[i] + (length * fs))
+    for i in range(0, num_segments):
+        cur_start = int(segments[i])
+        cur_end = int(segments[i] + (length * fs))
         cur_sound = audio[cur_start: cur_end]
 
         # Calculate similarity with matched filter
-        cur_matches = np.abs(matched_filter(cur_sound, audio, segments_in_samples))
+        cur_matches = np.abs(matched_filter(cur_sound, audio, segments))
         if include_self is False:
             cur_matches[i] = 0
         # Row normalization
-        similarity[:, i] = cur_matches / np.sum(cur_matches)
+        sum_matches = np.sum(cur_matches)
+        if sum_matches > 0:
+            similarity[:, i] = cur_matches / sum_matches
 
     # Identify the thumbnail
     sim_curve = np.sum(similarity, axis=1) / np.sum(similarity)
     # print(np.sum(similarity, axis=0))
     thumb_idx = np.argmax(sim_curve)
-    thumb_start = int(segments_in_samples[thumb_idx])
-    thumb_end = int(segments_in_samples[thumb_idx] + (length * fs))
+    thumb_start = int(segments[thumb_idx])
+    thumb_end = int(segments[thumb_idx] + (length * fs))
     thumb = audio[thumb_start: thumb_end]
 
     # Flatten out low similarity values
-    return thumb, sim_curve, segments, similarity
+    return thumb, sim_curve, segments_in_seconds, similarity
 
 
 def main():

@@ -66,7 +66,7 @@ def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     ax.xaxis.set_ticks(np.arange(0, num_windows, tick_step))
     ax.yaxis.set_ticks(np.arange(0, num_windows, tick_step))
     image = ax.imshow(similarity_matrix)
-    cbar = plt.colorbar(image, format='%2.0f')
+    cbar = plt.colorbar(image, format='%2.2f')
     cbar.set_label('Similarity')
     return ax
 
@@ -118,7 +118,7 @@ def plot_peaks(peaks, ax=None, color='rx'):
 
     ax = get_axes(ax)
     idx_f = cfg.FREQ_IDX
-    ax.plot(peaks[:, idx_f], peaks[:, idx_f], color)
+    ax.plot(peaks[:, idx_f + 1], peaks[:, idx_f], color)
     ax.set_ylabel('Frequency Frame')
     ax.set_xlabel('Time Frame')
     return ax
