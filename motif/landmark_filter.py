@@ -5,9 +5,9 @@ import segmentation as seg
 import visutils as vis
 
 
-def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwargs):
+def thumbnail(audio, fs, length, include_self=False, seg_method='regular', with_overlap=True):
     # Segment the audio
-    segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method, **kwargs)
+    segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)
     segments = segments_in_seconds * fs
 
     # Calculate the self-similarity matrix
@@ -15,6 +15,7 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwa
     similarity = np.zeros((num_segments, num_segments))
     segment_fp = []
 
+    # Pre-compute Shazam fingerprints
     for i in range(0, num_segments):
         cur_start = int(segments[i])
         cur_end = int(segments[i] + (length * fs))
@@ -23,42 +24,50 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', **kwa
         segment_fp.append(cur_fp)
 
     for i in range(0, num_segments):
-        # Calculate similarity with matched filter
+        # Calculate similarity (forwards only, for a symmetric measure)
         cur_matches = np.zeros(num_segments)
-        for j in range(0, num_segments):
+        for j in range(i, num_segments):
+
             if include_self is False and i == j:
                 continue
+
+            # Avoid overlap effects for any window
+            if with_overlap is False:
+                this_seg = segments_in_seconds[i]
+                that_seg = segments_in_seconds[j]
+                if this_seg < that_seg < this_seg + length:
+                    continue
+                elif that_seg < this_seg < that_seg + length:
+                    continue
+
             cur_matches[j] = shazam.hash_search(segment_fp[i], segment_fp[j])
-        # Row normalization
-        sum_matches = np.sum(cur_matches)
-        if sum_matches > 0:
-            similarity[:, i] = cur_matches / sum_matches
+
+        similarity[:, i] = cur_matches
+
+    # Row normalization (after similarity calculation)
+    similarity = 0.5 * (similarity.T + similarity)
+    for i in range(0, num_segments):
+        row = similarity[:, i]
+        row_sum = np.sum(row)
+        if row_sum > 0:
+            similarity[:, i] = row / row_sum
 
     # Identify the thumbnail
     sim_curve = np.sum(similarity, axis=1) / np.sum(similarity)
-    print(np.sum(similarity, axis=0))
     thumb_idx = np.argmax(sim_curve)
     thumb_start = int(segments[thumb_idx])
     thumb_end = int(segments[thumb_idx] + (length * fs))
     thumb = audio[thumb_start: thumb_end]
 
-    # Flatten out low similarity values
     return thumb, sim_curve, segments_in_seconds, similarity
 
 
 # Apply a sliding window of a part of the song to the rest of the song
-def thumbnail_shazam(audio, fs, audio_pairs, window_length=2, overlap=0.5):
+def thumbnail_linear(audio, fs, audio_pairs, window_length=2, overlap=0.5):
     segments_in_seconds = seg.segment_regular(audio, fs, length=window_length, overlap=overlap)
     segments = segments_in_seconds * fs
     num_segments = segments_in_seconds.shape[0]
     seg_matches = np.zeros(num_segments)
-    seg_pairs = []
-
-    # for i in range(0, num_segments):
-    #     snap_start = int(segments[i])
-    #     snap_end = int(segments[i + 1])
-    #     snap = audio[snap_start: snap_end]
-    #     # _, seg_pairs = fp.fingerprint(segment)
 
     # Identify similarity of segment to the entire piece of audio
     for i in range(0, num_segments - 1):
@@ -66,9 +75,7 @@ def thumbnail_shazam(audio, fs, audio_pairs, window_length=2, overlap=0.5):
         snap_end = int(segments[i + 1])
         snap = audio[snap_start: snap_end]
         _, seg_pairs, _ = shazam.fingerprint(snap)
-
         segment_hits = shazam.linear_search(audio_pairs, seg_pairs)
-
         seg_matches[i] = np.average(segment_hits)
 
     # Normalize and identify maximum window
@@ -76,22 +83,19 @@ def thumbnail_shazam(audio, fs, audio_pairs, window_length=2, overlap=0.5):
     thumb_idx = np.argmax(seg_matches)
     thumb_segment = audio[int(segments_in_seconds[thumb_idx] * fs): int(segments_in_seconds[thumb_idx] * fs)]
 
-    # print("Thumbnail complete")
     return thumb_segment, seg_matches, segments_in_seconds
 
 
-# # Run the thumbnailing strategy for different window lengths
-# def thumbnail_multi(audio, fs, audio_pairs, length_vect, overlap_vect):
-#     num_experiments = length_vect.shape[0]
-#     matches_list = []
-#     segments_list =[]
-#     for i in range(0, num_experiments):
-#         _, matches, segments = thumbnail(audio, fs, audio_pairs,
-#                                          window_length=length_vect[i],
-#                                          overlap=overlap_vect[i])
-#         matches_list.append(matches)
-#         segments_list.append(segments)
-#     return matches_list, segments_list
+# Run the thumbnailing strategy for different window lengths
+def thumbnail_multi(audio, fs, length_vect):
+    num_experiments = length_vect.shape[0]
+    matches_list = []
+    segments_list =[]
+    for i in range(0, num_experiments):
+        _, matches, segments, _ = thumbnail(audio, fs, length=length_vect[i])
+        matches_list.append(matches)
+        segments_list.append(segments)
+    return matches_list, segments_list
 
 
 def main():
@@ -105,7 +109,11 @@ def main():
     # ax = vis.plot_similarity_curve(matches, segments, labels=audio_labels)
     # ax.set_title('Similarity Curve for {}'.format(name))
 
-    thumb, similarity, segments, sim_matrix = thumbnail(audio, fs, seg_method='regular', length=2)
+    thumb, similarity, segments, sim_matrix = thumbnail(audio, fs,
+                                                        seg_method='onset',
+                                                        length=2,
+                                                        with_overlap=False)
+
     ax = vis.plot_similarity_matrix(sim_matrix)
     ax.set_title('Regular Segmentation Similarity Matrix')
     ax = vis.plot_similarity_curve(similarity, segment_times=segments, labels=audio_labels)
@@ -113,7 +121,7 @@ def main():
     ax.legend()
     # ax = vis.plot_window_overlap(segments, np.ones(segments.shape) * 2, tick_step=3)
     # ax.set_title('Regular Segmentation Overlap')
-    ax.grid()
+    # ax.grid()
     vis.show()
 
     return

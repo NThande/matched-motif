@@ -61,7 +61,7 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
 
                 freq1 = peaks[i, FREQ_IDX]
                 freq2 = peaks[i + j, FREQ_IDX]
-                f_delta = np.abs(freq2 - freq1)
+                f_delta = freq2 - freq1
                 t1 = peaks[i, PEAK_TIME_IDX]
                 t2 = peaks[i + j, PEAK_TIME_IDX]
                 t_delta = t2 - t1

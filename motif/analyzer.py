@@ -3,12 +3,10 @@ import numpy as np
 import cluster
 import config as cfg
 import graphutils as graph
-import matchedfilter as mf
 import segmentation as seg
-import matplotlib.pyplot as plt
-import librosa.display as lb
-import visutils as vis
-import pandas as pd
+import match_filter
+import landmark_filter
+
 
 NODE_LABEL = cfg.NODE_LABEL
 CLUSTER_NAME = cfg.CLUSTER_NAME
@@ -18,22 +16,18 @@ CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 def analyze(audio, fs,
             num_motifs,
             seg_length=cfg.SEGMENT_LENGTH,
-            # threshold=50.,
-            threshold=1,
-            tf_method='stft',
-            seg_method='onset',
+            threshold=3,
+            seg_method='beat',
             cluster_method='kmeans',
             similarity_method='match',
             topk_thresh=True,
-            with_graph=True,
-            **kwargs):
+            with_graph=True):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = self_similarity(audio, fs,
                                                 method=similarity_method,
                                                 length=seg_length,
-                                                seg_method=seg_method,
-                                                tf_method=tf_method,
-                                                **kwargs)
+                                                seg_method=seg_method)
+    print("Done Self-Similarity")
     # Create labels for nodes
     time_labels = seg.seg_to_label(segments, segments + seg_length)
 
@@ -48,7 +42,7 @@ def analyze(audio, fs,
     if with_graph:
         # Create networkx graph and extract its incidence matrix for clustering
         G, relabel_idx = graph.adjacency_matrix_to_graph(adjacency, time_labels, NODE_LABEL, prune=True)
-        motif_labels = cluster.cluster(incidence=None, graph=G, k_clusters=num_motifs, method=cluster_method, **kwargs)
+        motif_labels = cluster.cluster(incidence=None, graph=G, k_clusters=num_motifs, method=cluster_method)
 
         # Add clustering results to graph attributes
         graph.add_node_attribute(G, motif_labels, CLUSTER_NAME)
@@ -58,7 +52,7 @@ def analyze(audio, fs,
         # Create incidence matrix and cluster directly
         M, _ = graph.adjacency_to_incidence_matrix(adjacency, prune=False)
         M, relabel_idx = graph.prune_incidence(M)
-        motif_labels = cluster.cluster(incidence=M, k_clusters=num_motifs, method=cluster_method, **kwargs)
+        motif_labels = cluster.cluster(incidence=M, k_clusters=num_motifs, method=cluster_method)
 
     # Update segment list to account for pruned nodes
     seg_starts = segments[relabel_idx]
@@ -72,21 +66,19 @@ def analyze(audio, fs,
 
 
 # Choose a method for calculating similarity
-def self_similarity(audio, fs, length, method='match', seg_method='onset', **kwargs):
+def self_similarity(audio, fs, length, method, seg_method):
     if method is 'match':
-        return mf.thumbnail(audio, fs, length=length, seg_method=seg_method, **kwargs)
-    # elif method is 'pair':
-    #     return pf.thumbnail(audio, fs, length=length, seg_method=seg_method)
+        return match_filter.thumbnail(audio, fs, length=length, seg_method=seg_method, with_overlap=False)
+    elif method is 'shazam':
+        return landmark_filter.thumbnail(audio, fs, length=length, seg_method=seg_method, with_overlap=False)
     else:
-        print("Unrecognized clustering method: {}".format(method))
+        print("Unrecognized similarity method: {}".format(method))
 
 
 # Performs a hard threshold on an adjacency matrix with different methods
 def topk_threshold(adjacency, threshold):
     # Keep only the top k connections for each node
     if threshold >= 1:
-        if threshold < 1:
-            return np.zeros(adjacency.shape)
         k = int(threshold)
         for i in range(adjacency.shape[0]):
             row = adjacency[i, :]

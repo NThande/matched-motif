@@ -27,9 +27,9 @@ def k_means_experiment(audio, fs, length, name='audio', show_plot=None,
     G_set = []
     for k in k_clusters:
         starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
-                                                   seg_length=length,
-                                                   seg_method='onset',
-                                                   cluster_method='kmeans')
+                                                         seg_length=length,
+                                                         seg_method='onset',
+                                                         cluster_method='kmeans')
         G_set.append(G)
         num_motifs = np.unique(motif_labels).shape[0]
 
@@ -39,7 +39,35 @@ def k_means_experiment(audio, fs, length, name='audio', show_plot=None,
                                     title_hook=title_hook,
                                     show_plot=show_plot,
                                     num_groups=num_motifs,
-                                    draw_base=(k == k_clusters[0]))
+                                    draw_ref=(k == k_clusters[0]))
+        if 'motif' in show_plot:
+            draw_results_motif(audio, fs, starts, ends, motif_labels,
+                               name=name,
+                               title_hook=title_hook)
+    return G_set
+
+
+def thumbnail_experiment(audio, fs, length, name='audio', show_plot=None,
+                         methods=('match', 'shazam'), k=3):
+    G_set = []
+    # If only one method string is passed in
+    if not isinstance(methods, tuple):
+        methods = [methods]
+
+    for m in methods:
+        starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
+                                                         seg_length=length,
+                                                         similarity_method=m)
+        G_set.append(G)
+        num_motifs = np.unique(motif_labels).shape[0]
+
+        title_hook = 'with {} similarity'.format(m)
+        if G is not None:
+            draw_results_as_network(G, name,
+                                    title_hook=title_hook,
+                                    show_plot=show_plot,
+                                    num_groups=num_motifs,
+                                    draw_ref=False)
         if 'motif' in show_plot:
             draw_results_motif(audio, fs, starts, ends, motif_labels,
                                name=name,
@@ -74,18 +102,18 @@ def draw_reference(audio, fs, labels_df, name='audio', show_plot=None):
     return G
 
 
-def draw_results_as_network(G, name, title_hook, show_plot, num_groups=None, draw_base=False):
+def draw_results_as_network(G, name, title_hook, show_plot, num_groups=None, draw_ref=False):
     if show_plot is None:
         return
     if 'chord' in show_plot:
-        draw_results_chord(G, name, title_hook=title_hook, draw_base=draw_base)
+        draw_results_chord(G, name, title_hook=title_hook, draw_ref=draw_ref)
     if 'arc' in show_plot:
-        draw_results_arc(G, name, title_hook=title_hook, num_groups=num_groups, draw_base=draw_base)
+        draw_results_arc(G, name, title_hook=title_hook, num_groups=num_groups, draw_ref=draw_ref)
     if 'matrix' in show_plot:
         draw_results_matrix(G, name, title_hook=title_hook)
 
 
-def draw_results_chord(G, name, title_hook, draw_base=False):
+def draw_results_chord(G, name, title_hook, draw_ref=False):
     chord_labels = graph.to_node_dataframe(G)
     c = vis.draw_chordgraph(G,
                             node_data=chord_labels,
@@ -95,7 +123,7 @@ def draw_results_chord(G, name, title_hook, draw_base=False):
                             edge_color=cfg.CLUSTER_EDGE_NAME)
     vis.show(c)
 
-    if draw_base:
+    if draw_ref:
         c = vis.draw_chordgraph(G,
                                 node_data=chord_labels,
                                 label_col=cfg.NODE_LABEL,
@@ -103,7 +131,7 @@ def draw_results_chord(G, name, title_hook, draw_base=False):
         vis.show(c)
 
 
-def draw_results_arc(G, name, title_hook, num_groups=None, draw_base=False):
+def draw_results_arc(G, name, title_hook, num_groups=None, draw_ref=False):
     # Define group color for arc graph
     arc_labels = graph.to_node_dict(G, node_attr=cfg.NODE_LABEL)
     num_nodes = len(G.nodes())
@@ -123,7 +151,7 @@ def draw_results_arc(G, name, title_hook, num_groups=None, draw_base=False):
                            )
     ax.set_title('Arc Graph for {} {}'.format(name, title_hook))
 
-    if draw_base:
+    if draw_ref:
         ax = vis.draw_arcgraph(G,
                                node_size=30.,
                                node_order=range(0, num_nodes),
@@ -144,15 +172,21 @@ def draw_results_motif(audio, fs, starts, ends, labels, name='audio', title_hook
 
 
 def main():
-    name = 'genre_test_3'
+    name = 'genre_test_7'
     directory = "./bin/labelled"
     audio, fs = fileutils.load_audio(name, audio_dir=directory)
     # audio_labels = fileutils.load_labels(name, label_dir=directory)
-    length = 5
+    length = 3
 
-    # draw_reference(audio_labels, name=name, show_plot=('chord', 'arc'))
-    # segmentation_experiment(audio, fs, length, num_motifs=3, name=name, show_plot=('arc'))
-    k_means_experiment(audio, fs, length, name=name, show_plot=('motif'))
+    # draw_reference(audio_labels, name=name,
+    #                show_plot=('chord', 'arc'))
+    # segmentation_experiment(audio, fs, length, num_motifs=3, name=name,
+    #                         show_plot=('arc'))
+    # k_means_experiment(audio, fs, length, name=name,
+    #                    show_plot=('motif'))
+    thumbnail_experiment(audio, fs, length, name=name,
+                         show_plot=('motif', 'matrix'),
+                         methods=('match','shazam'), k=3)
     vis.show()
     return
 

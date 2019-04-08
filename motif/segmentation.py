@@ -6,19 +6,19 @@ import pandas as pd
 
 
 # Choose a segmentation method from a given input
-def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular', **kwargs):
+def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular'):
     segments = None
     if method is 'regular':
-        segments = segment_regular(audio, fs, length=length, overlap=overlap, **kwargs)
+        segments = segment_regular(audio, fs, length=length, overlap=overlap)
     elif method is 'onset' or method is 'beat':
-        segments = segment_onset(audio, fs, length=length, overlap=overlap, method=method, **kwargs)
+        segments = segment_onset(audio, fs, length=length, overlap=overlap, method=method)
     else:
         print("Unrecognized segmentation method: {}".format(method))
     return segments
 
 
 # Create regular segments of fixed length with an overlap ratio in seconds
-def segment_regular(audio, fs, length, overlap, **kwargs):
+def segment_regular(audio, fs, length, overlap):
     total_length = audio.shape[0] / fs
     segment_list = []
     k = 0
@@ -38,15 +38,10 @@ def segment_onset(audio, fs,
                   fill_space=False):
     if method is 'onset':
         onsets = lb.onset.onset_detect(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time', backtrack=True)
-        # onsets = lb.onset.onset_detect(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time', backtrack=False)
     elif method is 'beat':
         _, onsets = lb.beat.beat_track(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time')
     else:
         return None
-
-    # # If no onsets are found, default to regular segmentation
-    # if onsets.shape[0] == 0:
-    #     return segment_regular(audio, fs, length, overlap)
 
     if onsets[0] != 0.:
         onsets = np.insert(onsets, 0, 0)
@@ -135,7 +130,9 @@ def merge_motifs(start, end, labels):
     merge_end.append(cur_end)
     merge_labels.append(cur_label)
 
-    return merge_start, merge_end, merge_labels
+    # Convert to np array
+    merge_seg = np.array((merge_start, merge_end, merge_labels))
+    return merge_seg[0, :], merge_seg[1, :], merge_seg[2, :]
 
 
 # Renumber integer labels so that they appear in order in the labels list.
