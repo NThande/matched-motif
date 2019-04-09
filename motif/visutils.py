@@ -181,6 +181,10 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8)
     return ax
 
 
+def plot_metric_bar():
+    return
+
+
 # Draw Chord diagram of graph g
 def draw_chordgraph(g,
                     node_data=None,

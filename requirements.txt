@@ -1,3 +1,4 @@
+editdistance
 fastdtw
 scikit-learn
 bokeh

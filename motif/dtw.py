@@ -1,8 +1,10 @@
-import librosa as lb
-import fileutils
-import fastdtw
-from scipy.spatial.distance import euclidean
 import time
+
+import fastdtw
+import librosa as lb
+from scipy.spatial.distance import euclidean
+
+import fileutils
 
 
 def main():
@@ -24,7 +26,7 @@ def main():
     end = time.time()
 
     print("Fast Time: {}".format(end - start))
-    # print(wp)
+    print(wp)
 
 
 if __name__ == '__main__':
