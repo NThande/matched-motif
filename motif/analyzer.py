@@ -6,6 +6,7 @@ import graphutils as graph
 import segmentation as seg
 import match_filter
 import landmark_filter
+import motifutils as motif
 
 
 NODE_LABEL = cfg.NODE_LABEL
@@ -59,9 +60,9 @@ def analyze(audio, fs,
     seg_ends = seg_starts + seg_length
 
     # Merge motifs and rebuild text labels
-    seg_starts, seg_ends, motif_labels = seg.merge_motifs(seg_starts, seg_ends, motif_labels)
+    seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
     motif_labels = motif_labels.astype(int)
-    motif_labels = seg.sequence_labels(motif_labels)
+    motif_labels = motif.sequence_labels(motif_labels)
     return seg_starts, seg_ends, motif_labels, G
 
 

@@ -1,16 +1,20 @@
-import numpy as np
 import editdistance
+import numpy as np
+
+START_IDX = 0
+END_IDX = 1
+LABEL_IDX = 2
 
 
-# For simplicity, this algorithm assumes that segments is a 2 x N array of N segment starts and ends.
+# For simplicity, this algorithm assumes that segments is a 3 x N array of N segment starts, ends, and labels.
 # Borrowed from Chai and Vercoe.
 # Returns a metric reflecting the distance between the nearest neighbors in observed_segments and reference_segments.
-def boundary_distance(obs_labels, ref_labels, obs_segments, ref_segments):
+def boundary_distance(obs_motifs, ref_motifs):
     # Recall
-    r = recall(obs_labels, ref_labels, obs_segments, ref_segments)
+    r = recall(obs_motifs, ref_motifs)
     # Number of repetitive segments in ideal structure
-    s = np.unique(ref_labels).shape[0]
-    return (1 - r)/s
+    s = np.unique(ref_motifs[LABEL_IDX]).shape[0]
+    return (1 - r) / s
 
 
 # Returns the Levenshtein distance between the observed_labels and reference_labels.
@@ -28,52 +32,54 @@ def motif_count(obs_labels, ref_labels):
 
 
 # Combines Recall and Precision methods as per the method by Masataka Goto.
-def f_measure(obs_labels, ref_labels, obs_segments, ref_segments):
+def f_measure(obs_motifs, ref_motifs):
     # Recall
-    r = recall(obs_labels, ref_labels, obs_segments, ref_segments)
+    r = recall(obs_motifs, ref_motifs)
     # Precision
-    p = precision(obs_labels, ref_labels, obs_segments, ref_segments)
+    p = precision(obs_motifs, ref_motifs)
     # F-Measure
-    return (2*r*p)/(r + p)
+    return (2 * r * p) / (r + p)
 
 
-def recall(obs_labels, ref_labels, obs_segments, ref_segments):
+def recall(obs_motifs, ref_motifs):
     # Sum of length of correctly observed motifs
-    shared_seg = shared_motifs(obs_labels, ref_labels, obs_segments, ref_segments)
+    shared_seg = shared_motifs(obs_motifs, ref_motifs)
     shared_len = sum_segments(shared_seg)
     # Sum of length of ideal motifs
-    ref_len = sum_segments(ref_segments)
-    return shared_len/ref_len
+    ref_len = sum_segments(ref_motifs)
+    return shared_len / ref_len
 
 
-def precision(obs_labels, ref_labels, obs_segments, ref_segments):
+def precision(obs_motifs, ref_motifs):
     # Sum of length of correctly observed motifs
-    shared_seg = shared_motifs(obs_labels, ref_labels, obs_segments, ref_segments)
+    # Sum of length of correctly observed motifs
+    shared_seg = shared_motifs(obs_motifs, ref_motifs)
     shared_len = sum_segments(shared_seg)
-    # Sum of observed motifs
-    obs_len = sum_segments(obs_segments)
-    return shared_len/obs_len
+    # Sum of length of observed motifs
+    obs_len = sum_segments(obs_motifs)
+    return shared_len / obs_len
 
 
 # Produces a segmentation with only segments with the same label between the obs and ref sets.
-def shared_motifs(obs_labels, ref_labels, obs_segments, ref_segments):
+def shared_motifs(obs_motifs, ref_motifs):
     share_start = []
     share_end = []
-    for i in range(ref_segments.shape[1]):
-        for j in range(obs_segments.shape[1]):
+    for i in range(ref_motifs.shape[1]):
+        for j in range(obs_motifs.shape[1]):
             # Find where the segments start to overlap
-            if obs_segments[1, j] < ref_segments[0, i]:
+            if obs_motifs[END_IDX, j] < ref_motifs[START_IDX, i]:
                 continue
-            elif obs_segments[0, j] > ref_segments[1, i]:
+            elif obs_motifs[START_IDX, j] > ref_motifs[END_IDX, i]:
                 continue
             # Does this segment have the right label?
-            elif obs_labels[j] != ref_labels[i]:
+            elif obs_motifs[LABEL_IDX, j] != ref_motifs[LABEL_IDX, i]:
                 continue
             # Capture the overlapping region
-            start = np.maximum(obs_segments[0, j], ref_segments[0, i])
-            end = np.minimum(obs_segments[1, j], ref_segments[1, i])
-            share_start.append(start)
-            share_end.append(end)
+            start = np.maximum(obs_motifs[START_IDX, j], ref_motifs[START_IDX, i])
+            end = np.minimum(obs_motifs[END_IDX, j], ref_motifs[END_IDX, i])
+            if end > start:
+                share_start.append(start)
+                share_end.append(end)
 
     share_segments = np.array((share_start, share_end))
     return share_segments
@@ -81,24 +87,22 @@ def shared_motifs(obs_labels, ref_labels, obs_segments, ref_segments):
 
 # Sum of length of segments.
 def sum_segments(segments):
-    time_diff = segments[1, :] - segments[0, :]
+    time_diff = segments[END_IDX, :] - segments[START_IDX, :]
     return np.sum(time_diff)
 
 
 def main():
     # Create some pseudo-segments
-    test_ref_labels = np.array([0, 1, 0, 1])
-    test_obs_labels = np.array([0, 1, 1, 0, 1])
-    test_ref_segments = np.array(([0., 1., 2., 3.],
-                                 [1., 2., 3., 4.]))
-    test_obs_segments = np.array(([0., 1., 2.5, 2.75, 3.3],
-                                 [1., 2.5, 2.75, 3., 4.]))
-    print(edit_distance(test_ref_labels, test_obs_labels))
-    print("Ref:\n", test_ref_segments)
-    print(test_ref_labels)
-    print("Obs:\n", test_obs_segments)
-    print(test_obs_labels)
-    shared_segments = shared_motifs(test_obs_labels, test_ref_labels, test_obs_segments, test_ref_segments)
+    ref_motifs = np.array(([0., 1., 2., 3.],
+                           [1., 2., 3., 4.],
+                           [0, 1, 0, 1]))
+    obs_motifs = np.array(([0., 1., 2.5, 2.75, 3.3],
+                           [1., 2.5, 2.75, 3., 4.],
+                           [0, 1, 1, 0, 1]))
+    print("Edit Distance: ", edit_distance(ref_motifs[LABEL_IDX], obs_motifs[LABEL_IDX]))
+    print("Ref:\n", ref_motifs)
+    print("Obs:\n", obs_motifs)
+    shared_segments = shared_motifs(obs_motifs, ref_motifs)
     print("Shared:\n", shared_segments)
     print("Shared Length: \n", sum_segments(shared_segments))
     return

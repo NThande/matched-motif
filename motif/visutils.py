@@ -4,9 +4,11 @@ import librosa.display
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+
 import arcgraph as arc
 import config as cfg
 import graphutils as graph
+import motifutils as motif
 
 
 def get_axes(ax):
@@ -29,14 +31,7 @@ def plot_similarity_curve(seg_similarity, segment_times, labels=None, ax=None, c
 
 # Add hand-labeled motifs to a similarity plot for a mf thumbnail
 def add_motif_labels_with_df(ax, labels_df, alpha=0.2):
-    labels = labels_df['Event'].values
-    segments = labels_df['Time'].values
-    num_segments = segments.shape[0]
-
-    starts = segments[:num_segments-1]
-    ends = segments[1:]
-    labels = labels[:num_segments-1]
-
+    starts, ends, labels = motif.df_to_motif(labels_df)
     ax = add_motif_labels(ax, starts, ends, labels, alpha=alpha)
     return ax
 
@@ -53,7 +48,7 @@ def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
         else:
             unique_motifs[this_label] = 1
             ax.axvspan(starts[i], ends[i], alpha=alpha, color='C{}'.format(this_label),
-                       linestyle='-.', label = 'Motif {}'.format(this_label))
+                       linestyle='-.', label='Motif {}'.format(this_label))
     return ax
 
 
@@ -136,7 +131,8 @@ def plot_pairs(peaks, pairs, inc=50, ax=None,
     # Choose 1/inc pairs to plot
     pair_mask = np.zeros(pairs.shape[0]).astype(int)
     for i in range(0, pairs.shape[0]):
-        if i % inc == 0: pair_mask[i] = i
+        if i % inc == 0:
+            pair_mask[i] = i
     pruned = pairs[pair_mask, :]
 
     ax = plot_peaks(peaks, ax=ax, color=peak_color)
@@ -181,8 +177,21 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8)
     return ax
 
 
-def plot_metric_bar():
-    return
+def plot_metric_bar(x_pos, values, metric_labels, ax=None, color='b'):
+    ax = get_axes(ax)
+    ax.bar(x_pos, values,
+           tick_label=metric_labels,
+           linewidth=1,
+           edgecolor='black',
+           color=color)
+    return ax
+
+
+# Plot the similarity used to calculate a thumbnail.
+def plot_metric_curve(x_pos, values, metric_label=None, ax=None, color='rx-'):
+    ax = get_axes(ax)
+    ax.plot(x_pos, values, color, label=metric_label)
+    return ax
 
 
 # Draw Chord diagram of graph g

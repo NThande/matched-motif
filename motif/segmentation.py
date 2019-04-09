@@ -1,8 +1,8 @@
-import fileutils
-import numpy as np
 import librosa as lb
+import numpy as np
+
 import config as cfg
-import pandas as pd
+import fileutils
 
 
 # Choose a segmentation method from a given input
@@ -89,91 +89,6 @@ def seg_to_label(starts, ends):
     for i in range(starts.shape[0]):
         labels.append('{start:2.2f} - {end:2.2f}'.format(start=starts[i], end=ends[i]))
     return labels
-
-
-# Merge separate motif groups by iterating through the timestamps.
-def merge_motifs(start, end, labels):
-    # Merge motifs present in labels
-    num_motifs = labels.shape[0]
-    merge_start = []
-    merge_end = []
-    merge_labels = []
-
-    cur_start = start[0]
-    cur_end = end[0]
-    cur_label = labels[0]
-    for i in range(num_motifs):
-        if cur_end > start[i]:
-            # Case 1: Adjacent segments have the same cluster group
-            # Shift merge end forward
-            if cur_label == labels[i]:
-                cur_end = end[i]
-            # Case 2: Adjacent segments have different cluster groups
-            # End the current motif merge and start a new one
-            else:
-                merge_start.append(cur_start)
-                merge_end.append(start[i])
-                merge_labels.append(cur_label)
-                cur_start = start[i]
-                cur_end = end[i]
-                cur_label = labels[i]
-        # Case 3: Adjacent segments are disjoint
-        else:
-            merge_start.append(cur_start)
-            merge_end.append(cur_end)
-            merge_labels.append(cur_label)
-            cur_start = start[i]
-            cur_end = end[i]
-            cur_label = labels[i]
-
-    merge_start.append(cur_start)
-    merge_end.append(cur_end)
-    merge_labels.append(cur_label)
-
-    # Convert to np array
-    merge_seg = np.array((merge_start, merge_end, merge_labels))
-    return merge_seg[0, :], merge_seg[1, :], merge_seg[2, :]
-
-
-# Renumber integer labels so that they appear in order in the labels list.
-def sequence_labels(labels):
-    unique_labels = np.unique(labels)
-    label_map = dict.fromkeys(unique_labels)
-    label_pos = np.zeros(unique_labels.shape[0])
-
-    for i in unique_labels:
-        label_pos[i] = np.nonzero(labels == i)[0][0]
-
-    new_order = np.argsort(label_pos)
-    for i in range(new_order.shape[0]):
-        label_map[new_order[i]] = i
-
-    for i in range(labels.shape[0]):
-        labels[i] = label_map[labels[i]]
-
-    return labels
-
-
-# Collect motifs into a single output dictionary
-def motif_to_dict(starts, ends, labels):
-    time_labels = seg_to_label(starts, ends)
-    motifs = dict.fromkeys(np.unique(labels))
-    for i in range(len(time_labels)):
-        if motifs[labels[i]] is None:
-            motifs[labels[i]] = [time_labels[i]]
-        else:
-            motifs[labels[i]].append(time_labels[i])
-    return motifs
-
-
-# Collect motifs into pandas dataframe
-def motif_to_df(starts, ends, labels):
-    motif_dict = {'Start':starts, 'End':ends, 'Motif':labels}
-    return pd.DataFrame(motif_dict, columns=motif_dict.keys())
-
-
-def motif_join(starts, ends, motif_labels):
-    return
 
 
 def main():
