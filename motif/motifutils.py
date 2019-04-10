@@ -1,6 +1,13 @@
 import numpy as np
 import pandas as pd
+from suffix_trees import STree
+
+import config as cfg
 import segmentation as seg
+
+START_IDX = cfg.START_IDX
+END_IDX = cfg.END_IDX
+LABEL_IDX = cfg.LABEL_IDX
 
 
 # Merge separate motif groups by iterating through the timestamps.
@@ -45,6 +52,51 @@ def merge_motifs(starts, ends, labels):
     return np.array(merge_start), np.array(merge_end), np.array(merge_labels)
 
 
+# Join motifs using the string-join method
+def motif_join(starts, ends, motif_labels):
+    # Transform labels to string
+    num_motifs = motif_labels.shape[0]
+    labels_str = np.array_str(motif_labels)
+    labels_str = labels_str.replace('[', '').replace(']', '')
+    labels_sfx = STree.STree(labels_str)
+    print(labels_str)
+
+    i = 0
+    cur_seq = labels_str[i]
+    prev_seq = ''
+    prev_matches = []
+    cur_label = np.max(motif_labels) + 1
+    print(cur_label)
+    while i < num_motifs - 1:
+        matches = labels_sfx.find_all(cur_seq)
+        i += 1
+        if len(matches) > 1:
+            # Check if all segments overlap
+            no_overlap = False
+            for j in range(len(matches) - 1):
+                if matches[j + 1] - matches[j] >= len(cur_seq):
+                    no_overlap = True
+                    break
+            if no_overlap:
+                prev_seq = cur_seq
+                cur_seq += labels_str[i]
+            else:
+                labels_str = labels_str.replace(prev_seq, str(cur_label) + ' ')
+                cur_label += 1
+                prev_seq = ''
+                cur_seq += labels_str[i]
+        else:
+            if prev_seq is not '':
+                labels_str = labels_str.replace(prev_seq, str(cur_label) + ' ')
+                cur_label += 1
+                return
+            cur_seq = labels_str[i]
+        print("{}: {}".format(i, matches))
+        print(labels_str)
+
+    return
+
+
 # Renumber integer labels so that they appear in order in the labels list.
 def sequence_labels(labels):
     unique_labels = np.unique(labels)
@@ -78,7 +130,7 @@ def motif_to_dict(starts, ends, labels):
 
 # Collect motifs into pandas dataframe
 def motif_to_df(starts, ends, labels):
-    motif_dict = {'Start':starts, 'End':ends, 'Motif':labels}
+    motif_dict = {'Start': starts, 'End': ends, 'Motif': labels}
     return pd.DataFrame(motif_dict, columns=motif_dict.keys())
 
 
@@ -93,11 +145,19 @@ def df_to_motif(labels_df):
     return starts, ends, motif_labels
 
 
-def motif_join(starts, ends, motif_labels):
-    return
+# Pack and unpack segments and their labels into a single array
+def pack_motif(starts, ends, motif_labels):
+    return np.array((starts, ends, motif_labels))
+
+
+def unpack_motif(motifs):
+    return motifs[START_IDX], motifs[END_IDX], motifs[LABEL_IDX]
 
 
 def main():
+    labels = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 2, 3, 0, 2, 3, 4])
+    print(labels)
+    motif_join(None, None, labels)
     return
 
 

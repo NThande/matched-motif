@@ -1,9 +1,10 @@
 import editdistance
 import numpy as np
+import config as cfg
 
-START_IDX = 0
-END_IDX = 1
-LABEL_IDX = 2
+START_IDX = cfg.START_IDX
+END_IDX = cfg.END_IDX
+LABEL_IDX = cfg.LABEL_IDX
 
 
 # For simplicity, this algorithm assumes that segments is a 3 x N array of N segment starts, ends, and labels.
@@ -19,8 +20,8 @@ def boundary_distance(obs_motifs, ref_motifs):
 
 # Returns the Levenshtein distance between the observed_labels and reference_labels.
 def edit_distance(observed_labels, reference_labels):
-    observed_string = np.array2string(observed_labels)
-    reference_string = np.array2string(reference_labels)
+    observed_string = np.array_str(observed_labels)
+    reference_string = np.array_str(reference_labels)
     return editdistance.eval(observed_string, reference_string)
 
 

@@ -8,7 +8,7 @@ import motifutils as motif
 import visutils as vis
 
 
-def segmentation_experiment(audio, fs, length, num_motifs, name='audio', show_plot=None,
+def segmentation_experiment(audio, fs, length, num_motifs, name='audio', show_plot=(),
                             methods=('regular', 'onset')):
     G_dict = {}
     results_dict = {}
@@ -16,22 +16,18 @@ def segmentation_experiment(audio, fs, length, num_motifs, name='audio', show_pl
     for m in methods:
         starts, ends, motif_labels, G = analyzer.analyze(audio, fs, num_motifs, seg_length=length, seg_method=m)
         G_dict[m] = G
-        results = np.array((starts, ends, motif_labels))
+        results = motif.pack_motif(starts, ends, motif_labels)
         results_dict[m] = results
 
         title_hook = 'with {} segmentation'.format(m)
-        if G is not None:
-            draw_results_as_network(G, name,
-                                    title_hook=title_hook,
-                                    show_plot=show_plot)
-        if 'motif' in show_plot:
-            draw_results_motif(audio, fs, starts, ends, motif_labels,
-                               name=name,
-                               title_hook=title_hook)
+        draw_results(audio, fs, results, show_plot,
+                     G=G,
+                     name=name,
+                     title_hook=title_hook)
     return results_dict, G_dict
 
 
-def k_means_experiment(audio, fs, length, name='audio', show_plot=None,
+def k_means_experiment(audio, fs, length, name='audio', show_plot=(),
                        k_clusters=(3, 10)):
     G_dict = {}
     results_dict = {}
@@ -41,25 +37,21 @@ def k_means_experiment(audio, fs, length, name='audio', show_plot=None,
                                                          seg_method='onset',
                                                          cluster_method='kmeans')
         G_dict[k] = G
-        results = np.array((starts, ends, motif_labels))
+        results = motif.pack_motif(starts, ends, motif_labels)
         results_dict[k] = results
 
         num_motifs = np.unique(motif_labels).shape[0]
         title_hook = 'with {}-means clustering'.format(k)
-        if G is not None:
-            draw_results_as_network(G, name,
-                                    title_hook=title_hook,
-                                    show_plot=show_plot,
-                                    num_groups=num_motifs,
-                                    draw_ref=(k == k_clusters[0]))
-        if 'motif' in show_plot:
-            draw_results_motif(audio, fs, starts, ends, motif_labels,
-                               name=name,
-                               title_hook=title_hook)
+        draw_results(audio, fs, results, show_plot,
+                     G=G,
+                     name=name,
+                     title_hook=title_hook,
+                     num_groups=num_motifs,
+                     draw_ref=(k == k_clusters[0]))
     return results_dict, G_dict
 
 
-def thumbnail_experiment(audio, fs, length, name='audio', show_plot=None,
+def thumbnail_experiment(audio, fs, length, name='audio', show_plot=(),
                          methods=('match', 'shazam'), k=3):
     G_dict = {}
     results_dict = {}
@@ -72,21 +64,17 @@ def thumbnail_experiment(audio, fs, length, name='audio', show_plot=None,
                                                          seg_length=length,
                                                          similarity_method=m)
         G_dict[m] = G
-        results = np.array((starts, ends, motif_labels))
+        results = motif.pack_motif(starts, ends, motif_labels)
         results_dict[m] = results
 
         num_motifs = np.unique(motif_labels).shape[0]
         title_hook = 'with {} similarity'.format(m)
-        if G is not None:
-            draw_results_as_network(G, name,
-                                    title_hook=title_hook,
-                                    show_plot=show_plot,
-                                    num_groups=num_motifs,
-                                    draw_ref=False)
-        if 'motif' in show_plot:
-            draw_results_motif(audio, fs, starts, ends, motif_labels,
-                               name=name,
-                               title_hook=title_hook)
+        draw_results(audio, fs, results, show_plot,
+                     G=G,
+                     name=name,
+                     title_hook=title_hook,
+                     num_groups=num_motifs,
+                     draw_ref=False)
     return results_dict, G_dict
 
 
@@ -124,7 +112,8 @@ def draw_results(audio, fs, results, show_plot,
                                 num_groups=num_groups,
                                 draw_ref=draw_ref)
     if 'motif' in show_plot:
-        draw_results_motif(audio, fs, results[0], results[1], results[2],
+        starts, ends, motif_labels = motif.unpack_motif(results)
+        draw_results_motif(audio, fs, starts, ends, motif_labels,
                            name=name,
                            title_hook=title_hook)
     return
@@ -230,9 +219,9 @@ def main():
     # k_means_experiment(audio, fs, length, name=name,
     #                    show_plot=('motif'))
     thumbnail_experiment(audio, fs, length, name=name,
-                         show_plot=('arc'),
+                         show_plot=('arc', 'chord'),
                          methods=('match','shazam'), k=3)
-    # vis.show()
+    vis.show()
     return
 
 
