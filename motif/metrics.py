@@ -1,4 +1,4 @@
-import editdistance
+import editdistance # From https://github.com/aflc/editdistance
 import numpy as np
 import config as cfg
 

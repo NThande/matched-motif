@@ -58,15 +58,22 @@ def motif_join(starts, ends, motif_labels):
     # Transform labels to string
     sep = ','
     label_str = np.array_str(motif_labels).replace('[', sep).replace(']', sep).replace(' ', sep)
-    lrs = label_str
     label_dict = {}
     cur_relabel = np.max(motif_labels) + 1
-    while len(lrs) > len(sep + sep + sep):
-        lrs = longest_repetitive_substring(label_str)
-        if len(lrs) <= len(' 0 '):
-            break
+    lrs_len = motif_labels.shape[0]
+
+    # How do we avoid overlap?
+    while lrs_len > 1:
+        lrs = longest_repeated_substring(label_str)
         if lrs[0] is sep:
             lrs = lrs[1:]
+        lrs_arr = np.fromstring(lrs, count=-1, sep=sep, dtype=int)
+        lrs_len = lrs_arr.shape[0]
+
+        # Is this string too short?
+        if lrs_len <= 1:
+            break
+
         label_dict[cur_relabel] = np.fromstring(lrs, count=-1, sep=sep, dtype=int)
         label_str = label_str.replace(lrs, str(cur_relabel) + sep)
         cur_relabel += 1
@@ -78,8 +85,6 @@ def motif_join(starts, ends, motif_labels):
     restarts = np.zeros(relabels.shape)
     re_ends = np.zeros(relabels.shape)
     label_idx = 0
-    print(motif_labels)
-    print(relabels)
     for i in range(relabels.shape[0]):
         seq_length = 0
         if relabels[i] in label_dict.keys():
@@ -87,34 +92,51 @@ def motif_join(starts, ends, motif_labels):
         restarts[i] = starts[label_idx]
         re_ends[i] = ends[label_idx + seq_length]
         label_idx += seq_length + 1
-
     relabels = sequence_labels(relabels)
     return restarts, re_ends, relabels
 
 
-# Helper function for motif join
-def longest_repetitive_substring(r):
-    occ = defaultdict(int)
+# Dybamic programming method borrowed from https://www.geeksforgeeks.org/longest-repeating-and-non-overlapping-substring/
+# Returns the longest repeating non-overlapping
+# substring in str
+def longest_repeated_substring(str):
+    n = len(str)
+    LCSRe = [[0 for x in range(n + 1)]
+             for y in range(n + 1)]
 
-    def getsubs(loc, s):
-        substr = s[loc:]
-        i = -1
-        while (substr):
-            yield substr
-            substr = s[loc:i]
-            i -= 1
+    res = ""  # To store result
+    res_length = 0  # To store length of result
 
-    # tally all occurrences of all substrings
-    for i in range(len(r)):
-        for sub in getsubs(i, r):
-            occ[sub] += 1
-    # filter out all sub strings with fewer than 2 occurrences
-    filtered = [k for k, v in occ.items() if v >= 2]
-    if filtered:
-        maxkey = max(filtered, key=len)  # Find longest string
-        return maxkey
-    else:
-        return ''
+    # building table in bottom-up manner
+    index = 0
+    for i in range(1, n + 1):
+        for j in range(i + 1, n + 1):
+
+            # (j-i) > LCSRe[i-1][j-1] to remove
+            # overlapping
+            if (str[i - 1] == str[j - 1] and
+                    LCSRe[i - 1][j - 1] < (j - i)):
+                LCSRe[i][j] = LCSRe[i - 1][j - 1] + 1
+
+                # updating maximum length of the
+                # substring and updating the finishing
+                # index of the suffix
+                if (LCSRe[i][j] > res_length):
+                    res_length = LCSRe[i][j]
+                    index = max(i, index)
+
+            else:
+                LCSRe[i][j] = 0
+
+    # If we have non-empty result, then insert
+    # all characters from first character to
+    # last character of string
+    if (res_length > 0):
+        for i in range(index - res_length + 1,
+                       index + 1):
+            res = res + str[i - 1]
+
+    return res
 
 
 # Renumber integer labels so that they appear in order in the labels list.
@@ -178,10 +200,10 @@ def unpack_motif(motifs):
 
 
 def main():
-    # labels = np.array([0, 1, 2, 3, 0, 1, 2, 0, 1, 2])
+    labels = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 3])
     # print(labels)
     # motif_join(None, None, labels)
-    labels = np.random.random_integers(0, 3, 10)
+    # labels = np.random.random_integers(0, 3, 10)
     starts = np.arange(0, 12)
     ends = starts + 1
     print(labels)

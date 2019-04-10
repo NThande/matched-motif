@@ -30,6 +30,7 @@ def analyze(audio, fs,
                                                 length=seg_length,
                                                 seg_method=seg_method)
     print("Done Self-Similarity")
+    print("Segments:\n", segments)
     # Avoid overlap effects for any window
     if with_overlap is False:
         adjacency = remove_overlap(adjacency, segments, seg_length)

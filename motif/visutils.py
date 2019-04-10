@@ -43,12 +43,12 @@ def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
     for i in range(0, starts.shape[0]):
         this_label = int(labels[i])
         if this_label in unique_motifs:
-            ax.axvspan(starts[i], ends[i], alpha=alpha, color='C{}'.format(labels[i]),
-                       linestyle='-.')
+            ax.axvspan(starts[i], ends[i], alpha=alpha, facecolor='C{}'.format(labels[i] % 10),
+                       linestyle='-.', edgecolor='k')
         else:
             unique_motifs[this_label] = 1
-            ax.axvspan(starts[i], ends[i], alpha=alpha, color='C{}'.format(this_label),
-                       linestyle='-.', label='Motif {}'.format(this_label))
+            ax.axvspan(starts[i], ends[i], alpha=alpha, facecolor='C{}'.format(this_label % 10),
+                       linestyle='-.', edgecolor='k', label='Motif {}'.format(this_label))
     return ax
 
 
@@ -173,6 +173,7 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8)
     add_motif_labels(ax, starts, ends, labels, alpha)
     ax.set_xlabel("Time(s)")
     ax.set_ylabel("Amplitude")
+    plt.xticks(np.arange(int(audio.shape[0] / fs) + 1, step=2))
     ax.legend()
     return ax
 

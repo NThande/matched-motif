@@ -206,21 +206,21 @@ def write_motifs(audio, fs, name, audio_dir, segments, motif_labels):
 
 
 def main():
-    name = 'genre_test_3'
-    directory = "./bin/labelled"
+    name = 't5'
+    directory = "./bin/"
     audio, fs = fileutils.load_audio(name, audio_dir=directory)
-    audio_labels = fileutils.load_labels(name, label_dir=directory)
-    length = 3
+    # audio_labels = fileutils.load_labels(name, label_dir=directory)
+    length = cfg.SEGMENT_LENGTH
 
-    draw_reference(audio, fs, audio_labels, name=name,
-                   show_plot=('motif'))
+    # draw_reference(audio, fs, audio_labels, name=name,
+    #                show_plot=('motif'))
     # segmentation_experiment(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc'))
     # k_means_experiment(audio, fs, length, name=name,
     #                    show_plot=('motif'))
     thumbnail_experiment(audio, fs, length, name=name,
                          show_plot=('motif'),
-                         methods=('match'), k=7)
+                         methods=('match'), k=3)
     vis.show()
     return
 
