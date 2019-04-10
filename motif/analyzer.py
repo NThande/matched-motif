@@ -22,13 +22,18 @@ def analyze(audio, fs,
             cluster_method='kmeans',
             similarity_method='match',
             topk_thresh=True,
-            with_graph=True):
+            with_graph=True,
+            with_overlap=False):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = self_similarity(audio, fs,
                                                 method=similarity_method,
                                                 length=seg_length,
                                                 seg_method=seg_method)
     print("Done Self-Similarity")
+    # Avoid overlap effects for any window
+    if with_overlap is False:
+        adjacency = remove_overlap(adjacency, segments, seg_length)
+
     # Create labels for nodes
     time_labels = seg.seg_to_label(segments, segments + seg_length)
 
@@ -69,9 +74,9 @@ def analyze(audio, fs,
 # Choose a method for calculating similarity
 def self_similarity(audio, fs, length, method, seg_method):
     if method is 'match':
-        return match_filter.thumbnail(audio, fs, length=length, seg_method=seg_method, with_overlap=False)
+        return match_filter.thumbnail(audio, fs, length=length, seg_method=seg_method)
     elif method is 'shazam':
-        return landmark_filter.thumbnail(audio, fs, length=length, seg_method=seg_method, with_overlap=False)
+        return landmark_filter.thumbnail(audio, fs, length=length, seg_method=seg_method)
     else:
         print("Unrecognized similarity method: {}".format(method))
 
@@ -99,6 +104,33 @@ def topk_threshold(adjacency, threshold):
     else:
         return adjacency
     return adjacency
+
+
+# Avoid overlap effects for any window
+def remove_overlap(adjacency, segments, length):
+    num_segments = segments.shape[0]
+    for i in range(num_segments):
+        for j in range(num_segments):
+            this_seg = segments[i]
+            that_seg = segments[j]
+            if this_seg < that_seg < this_seg + length:
+                adjacency[i, j] = 0
+                adjacency[j, i] = 0
+            elif that_seg < this_seg < that_seg + length:
+                adjacency[i, j] = 0
+                adjacency[j, i] = 0
+
+    for i in range(0, num_segments):
+        row = adjacency[:, i]
+        row_sum = np.sum(row)
+        if row_sum > 0:
+            adjacency[:, i] = row / row_sum
+    return adjacency
+
+
+# Add additional weighting to adjacent segments
+def continuity_weighting(adjacency, segments, length):
+    return
 
 
 def main():

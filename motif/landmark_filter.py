@@ -5,7 +5,7 @@ import segmentation as seg
 import visutils as vis
 
 
-def thumbnail(audio, fs, length, include_self=False, seg_method='regular', with_overlap=True):
+def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
     # Segment the audio
     segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)
     segments = segments_in_seconds * fs
@@ -30,15 +30,6 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', with_
 
             if include_self is False and i == j:
                 continue
-
-            # Avoid overlap effects for any window
-            if with_overlap is False:
-                this_seg = segments_in_seconds[i]
-                that_seg = segments_in_seconds[j]
-                if this_seg < that_seg < this_seg + length:
-                    continue
-                elif that_seg < this_seg < that_seg + length:
-                    continue
 
             cur_matches[j] = shazam.hash_search(segment_fp[i], segment_fp[j])
 
@@ -111,8 +102,7 @@ def main():
 
     thumb, similarity, segments, sim_matrix = thumbnail(audio, fs,
                                                         seg_method='onset',
-                                                        length=2,
-                                                        with_overlap=False)
+                                                        length=2)
 
     ax = vis.plot_similarity_matrix(sim_matrix)
     ax.set_title('Regular Segmentation Similarity Matrix')

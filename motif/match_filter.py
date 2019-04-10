@@ -20,7 +20,7 @@ def matched_filter(ref, sig, segments):
 
 # Using a series of windowed matched filters of length window_length (in seconds)
 # on sound with sampling frequency fs, identify the audio thumbnail
-def thumbnail(audio, fs, length, include_self=False, seg_method='regular', with_overlap=True):
+def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
     # Segment the audio
     segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)
     segments = segments_in_seconds * fs
@@ -39,12 +39,6 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular', with_
 
         if include_self is False:
             cur_matches[i] = 0
-        # Eliminate any overlapping windows' similarity
-        if with_overlap is False:
-            pre_seg = segments_in_seconds[i] - length
-            post_seg = segments_in_seconds[i] + length
-            overlaps = np.where((segments_in_seconds > pre_seg) & (segments_in_seconds < post_seg))[0]
-            cur_matches[overlaps] = 0
 
         similarity[:, i] = cur_matches
 
@@ -75,8 +69,7 @@ def main():
 
     thumb, similarity, segments, sim_matrix = thumbnail(audio, fs,
                                                         seg_method='onset',
-                                                        length=2,
-                                                        with_overlap=False)
+                                                        length=2)
 
     ax = vis.plot_similarity_matrix(sim_matrix)
     ax.set_title('Regular Segmentation Similarity Matrix')
