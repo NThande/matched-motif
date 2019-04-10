@@ -66,8 +66,8 @@ def analyze(audio, fs,
 
     # Merge motifs and rebuild text labels
     seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
-    motif_labels = motif_labels.astype(int)
     motif_labels = motif.sequence_labels(motif_labels)
+    seg_starts, seg_ends, motif_labels = motif.motif_join(seg_starts, seg_ends, motif_labels)
     return seg_starts, seg_ends, motif_labels, G
 
 
@@ -129,7 +129,9 @@ def remove_overlap(adjacency, segments, length):
 
 
 # Add additional weighting to adjacent segments
-def continuity_weighting(adjacency, segments, length):
+def time_weighting(adjacency, segments, length):
+    # A perfect overlap is granted a score of 1. Total disparity (opposite ends of track) is a score of 0.
+
     return
 
 

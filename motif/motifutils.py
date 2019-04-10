@@ -50,7 +50,7 @@ def merge_motifs(starts, ends, labels):
     merge_end.append(cur_end)
     merge_labels.append(cur_label)
 
-    return np.array(merge_start), np.array(merge_end), np.array(merge_labels)
+    return np.array(merge_start), np.array(merge_end), np.array(merge_labels, dtype=int)
 
 
 # Join motifs using the string-join method
@@ -78,13 +78,15 @@ def motif_join(starts, ends, motif_labels):
     restarts = np.zeros(relabels.shape)
     re_ends = np.zeros(relabels.shape)
     label_idx = 0
+    print(motif_labels)
+    print(relabels)
     for i in range(relabels.shape[0]):
-        seq_length = 1
+        seq_length = 0
         if relabels[i] in label_dict.keys():
-            seq_length = label_dict[relabels[i]].shape[0]
+            seq_length = label_dict[relabels[i]].shape[0] - 1
         restarts[i] = starts[label_idx]
         re_ends[i] = ends[label_idx + seq_length]
-        label_idx += seq_length
+        label_idx += seq_length + 1
 
     relabels = sequence_labels(relabels)
     return restarts, re_ends, relabels
@@ -183,7 +185,9 @@ def main():
     starts = np.arange(0, 12)
     ends = starts + 1
     print(labels)
-    motif_join(starts, ends, labels)
+    restarts, reends, relabels = motif_join(starts, ends, labels)
+    print(restarts)
+    print(reends)
     simple_str = 'I am I am '
     complex_str = 'I am I am I'
     return

@@ -213,14 +213,14 @@ def main():
     length = 3
 
     draw_reference(audio, fs, audio_labels, name=name,
-                   show_plot=('arc'))
+                   show_plot=('motif'))
     # segmentation_experiment(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc'))
     # k_means_experiment(audio, fs, length, name=name,
     #                    show_plot=('motif'))
     thumbnail_experiment(audio, fs, length, name=name,
-                         show_plot=('arc', 'chord'),
-                         methods=('match','shazam'), k=3)
+                         show_plot=('motif'),
+                         methods=('match'), k=7)
     vis.show()
     return
 
