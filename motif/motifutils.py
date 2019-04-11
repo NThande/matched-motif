@@ -53,6 +53,20 @@ def merge_motifs(starts, ends, labels):
     return np.array(merge_start), np.array(merge_end), np.array(merge_labels, dtype=int)
 
 
+# Prune motifs shorter than the min_length.
+def prune_motifs(starts, ends, motif_labels, min_length=1):
+    num_motifs = motif_labels.shape[0]
+    prune_list = []
+    for i in range(num_motifs):
+        diff = ends[i] - starts[i]
+        if diff < min_length:
+            prune_list.append(i)
+    starts = np.delete(starts, prune_list)
+    ends = np.delete(ends, prune_list)
+    motif_labels = np.delete(motif_labels, prune_list)
+    return starts, ends, motif_labels
+
+
 # Join motifs using the string-join method
 def motif_join(starts, ends, motif_labels):
     # Transform labels to string

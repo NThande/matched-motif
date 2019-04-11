@@ -37,11 +37,7 @@ def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
 
     # Row normalization (after similarity calculation)
     similarity = 0.5 * (similarity.T + similarity)
-    for i in range(0, num_segments):
-        row = similarity[:, i]
-        row_sum = np.sum(row)
-        if row_sum > 0:
-            similarity[:, i] = row / row_sum
+    similarity = seg.row_normalize(segments, similarity)
 
     # Identify the thumbnail
     sim_curve = np.sum(similarity, axis=1) / np.sum(similarity)

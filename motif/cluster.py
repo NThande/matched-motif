@@ -9,19 +9,21 @@ def cluster(incidence, k_clusters, method='kmeans', graph=None, weight='weight')
         if graph is None:
             print("No input Data")
             return clusters
-        incidence = nx.incidence_matrix(graph, weight=weight)
+        incidence = nx.incidence_matrix(graph, weight=weight).toarray()
 
     if method is 'kmeans':
         clusters = k_means(incidence, k_clusters)
     elif method is 'agglom':
         clusters = agglom(incidence, k_clusters)
+    elif method is 'spectral':
+        clusters = spectral(incidence, k_clusters)
     else:
         print("Unrecognized clustering method: {}".format(method))
     return clusters
 
 
 # Cluster using k means with k_clusters clusters
-def k_means(incidence, k_clusters, n_init=20):
+def k_means(incidence, k_clusters, n_init=200):
     kmeans_clf = skc.KMeans(n_clusters=k_clusters, n_init=n_init)
     kmeans = kmeans_clf.fit_predict(incidence)
     return kmeans
@@ -32,6 +34,12 @@ def agglom(incidence, k_clusters=2, linkage='ward'):
     agglom_clf = skc.AgglomerativeClustering(n_clusters=k_clusters, linkage=linkage)
     agglom = agglom_clf.fit_predict(incidence)
     return agglom
+
+
+def spectral(incidence, k_clusters=2):
+    spectral_clf = skc.SpectralClustering(n_clusters=k_clusters)
+    spectral = spectral_clf.fit_predict(incidence)
+    return spectral
 
 
 def main():

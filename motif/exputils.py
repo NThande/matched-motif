@@ -6,6 +6,7 @@ import fileutils
 import graphutils as graph
 import motifutils as motif
 import visutils as vis
+import time
 
 
 def segmentation_experiment(audio, fs, length, num_motifs, name='audio', show_plot=(),
@@ -189,38 +190,52 @@ def draw_results_motif(audio, fs, starts, ends, labels, name='audio', title_hook
 
 
 # Write out all identified motifs
-def write_motifs(audio, fs, name, audio_dir, segments, motif_labels):
+def write_motifs(audio, fs, name, audio_dir, segments):
+    id = int(round(time.time() * 1000))
+    motif_labels = segments[cfg.LABEL_IDX]
     num_motifs = motif_labels.shape[0]
     motif_dict = dict.fromkeys(np.unique(motif_labels), 0)
     for i in range(num_motifs):
-        motif_start = int(segments[0, i] * fs)
-        motif_end = int(segments[1, i] * fs)
+        motif_start = int(segments[cfg.START_IDX, i] * fs)
+        motif_end = int(segments[cfg.END_IDX, i] * fs)
         this_motif = audio[motif_start:motif_end]
 
         this_instance = motif_dict[motif_labels[i]]
         motif_dict[motif_labels[i]] = motif_dict[motif_labels[i]] + 1
-        this_name = "{}_m{}_i{}".format(name, motif_labels[i], this_instance)
+        this_name = "{name}_m{motif}_i{instance}_{id}".format(name=name,
+                                                              motif=int(motif_labels[i]),
+                                                              instance=this_instance,
+                                                              id=id)
 
         fileutils.write_audio(this_motif, fs, this_name, audio_dir)
     return
 
 
-def main():
-    name = 't5'
-    directory = "./bin/"
-    audio, fs = fileutils.load_audio(name, audio_dir=directory)
-    # audio_labels = fileutils.load_labels(name, label_dir=directory)
-    length = cfg.SEGMENT_LENGTH
+def tune_length_with_audio(audio, fs):
+    return cfg.SEGMENT_LENGTH * np.ceil(((audio.shape[0] / fs) / 30)).astype(int)
 
-    # draw_reference(audio, fs, audio_labels, name=name,
-    #                show_plot=('motif'))
+
+def main():
+    name = 't4_train'
+    in_dir = './bin/labelled'
+    out_dir = './bin/results'
+    audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    audio_labels = fileutils.load_labels(name, label_dir=in_dir)
+    # Should be sensitive to the length of the track, as well as k
+    # Perhaps length should be extended as song goes longer than 30 seconds;
+    # 3 second = 30 seconds, 18 seconds = 3 min
+    length = tune_length_with_audio(audio, fs)
+
+    draw_reference(audio, fs, audio_labels, name=name,
+                   show_plot=('motif'))
     # segmentation_experiment(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc'))
     # k_means_experiment(audio, fs, length, name=name,
     #                    show_plot=('motif'))
-    thumbnail_experiment(audio, fs, length, name=name,
+    results, _ = thumbnail_experiment(audio, fs, length, name=name,
                          show_plot=('motif'),
-                         methods=('match'), k=3)
+                         methods=('match'), k=5)
+    write_motifs(audio, fs, name, out_dir, results['match'])
     vis.show()
     return
 

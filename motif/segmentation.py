@@ -43,9 +43,6 @@ def segment_onset(audio, fs,
     else:
         return None
 
-    if onsets[0] != 0.:
-        onsets = np.insert(onsets, 0, 0)
-
     num_onsets = onsets.shape[0]
 
     # Prune onsets that are too close to the previous onset or the end of the audio
@@ -89,6 +86,16 @@ def seg_to_label(starts, ends):
     for i in range(starts.shape[0]):
         labels.append('{start:2.2f} - {end:2.2f}'.format(start=starts[i], end=ends[i]))
     return labels
+
+
+def row_normalize(segments, similarity):
+    num_segments = segments.shape[0]
+    for i in range(0, num_segments):
+        row = similarity[:, i]
+        row_sum = np.sum(row)
+        if row_sum > 0:
+            similarity[:, i] = row / row_sum
+    return similarity
 
 
 def main():

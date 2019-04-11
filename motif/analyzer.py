@@ -23,17 +23,22 @@ def analyze(audio, fs,
             similarity_method='match',
             topk_thresh=True,
             with_graph=True,
-            with_overlap=False):
+            with_overlap=False,
+            with_reweight=True):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = self_similarity(audio, fs,
                                                 method=similarity_method,
                                                 length=seg_length,
                                                 seg_method=seg_method)
     print("Done Self-Similarity")
-    print("Segments:\n", segments)
+
+    # Add additional weights for segments that are close together in time
+    if with_reweight:
+        adjacency = reweight_by_time(segments, adjacency)
+
     # Avoid overlap effects for any window
     if with_overlap is False:
-        adjacency = remove_overlap(adjacency, segments, seg_length)
+        adjacency = remove_overlap(segments, adjacency, seg_length)
 
     # Create labels for nodes
     time_labels = seg.seg_to_label(segments, segments + seg_length)
@@ -69,6 +74,11 @@ def analyze(audio, fs,
     seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
     motif_labels = motif.sequence_labels(motif_labels)
     seg_starts, seg_ends, motif_labels = motif.motif_join(seg_starts, seg_ends, motif_labels)
+
+    # Prune short motifs outs of full segmentation
+    seg_starts, seg_ends, motif_labels = motif.prune_motifs(seg_starts, seg_ends, motif_labels,
+                                                            min_length=cfg.SEGMENT_LENGTH / 2)
+    motif_labels = motif.sequence_labels(motif_labels)
     return seg_starts, seg_ends, motif_labels, G
 
 
@@ -108,7 +118,7 @@ def topk_threshold(adjacency, threshold):
 
 
 # Avoid overlap effects for any window
-def remove_overlap(adjacency, segments, length):
+def remove_overlap(segments, adjacency, length):
     num_segments = segments.shape[0]
     for i in range(num_segments):
         for j in range(num_segments):
@@ -121,19 +131,26 @@ def remove_overlap(adjacency, segments, length):
                 adjacency[i, j] = 0
                 adjacency[j, i] = 0
 
-    for i in range(0, num_segments):
-        row = adjacency[:, i]
-        row_sum = np.sum(row)
-        if row_sum > 0:
-            adjacency[:, i] = row / row_sum
+    adjacency = seg.row_normalize(segments, adjacency)
     return adjacency
 
 
 # Add additional weighting to adjacent segments
-def time_weighting(adjacency, segments, length):
+def reweight_by_time(segments, adjacency):
     # A perfect overlap is granted a score of 1. Total disparity (opposite ends of track) is a score of 0.
+    num_segments = segments.shape[0]
+    last_seg = segments[num_segments - 1]
+    dist_matrix = np.zeros(adjacency.shape)
+    for i in range(num_segments):
+        cur_seg = segments[i]
+        for j in range(num_segments):
+            dist_matrix[i, j] = 1 - (np.abs(cur_seg - segments[j]) / last_seg)
 
-    return
+    # Adjust weights and re-normalize
+    adjacency = (0.1 * dist_matrix) + adjacency
+    adjacency = seg.row_normalize(segments, adjacency)
+
+    return adjacency
 
 
 def main():

@@ -18,5 +18,5 @@ def load_labels(audio_name, label_dir=cfg.AUDIO_DIR, suffix='_labels'):
 
 
 def write_audio(audio, fs, name, audio_dir=cfg.AUDIO_DIR):
-    audio_path = Path(audio_dir) / name
+    audio_path = Path(audio_dir) / (name + '.wav')
     lb.output.write_wav(str(audio_path), audio, fs, norm=True)
