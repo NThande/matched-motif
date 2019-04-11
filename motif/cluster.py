@@ -11,11 +11,11 @@ def cluster(incidence, k_clusters, method='kmeans', graph=None, weight='weight')
             return clusters
         incidence = nx.incidence_matrix(graph, weight=weight).toarray()
 
-    if method is 'kmeans':
+    if method == 'kmeans':
         clusters = k_means(incidence, k_clusters)
-    elif method is 'agglom':
+    elif method == 'agglom':
         clusters = agglom(incidence, k_clusters)
-    elif method is 'spectral':
+    elif method == 'spectral':
         clusters = spectral(incidence, k_clusters)
     else:
         print("Unrecognized clustering method: {}".format(method))

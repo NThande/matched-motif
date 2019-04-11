@@ -15,7 +15,7 @@ CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 
 
 def analyze(audio, fs,
-            num_motifs,
+            num_motifs=cfg.N_ClUSTERS,
             seg_length=cfg.SEGMENT_LENGTH,
             threshold=3,
             seg_method='beat',
@@ -84,9 +84,9 @@ def analyze(audio, fs,
 
 # Choose a method for calculating similarity
 def self_similarity(audio, fs, length, method, seg_method):
-    if method is 'match':
+    if method == 'match':
         return match_filter.thumbnail(audio, fs, length=length, seg_method=seg_method)
-    elif method is 'shazam':
+    elif method == 'shazam':
         return landmark_filter.thumbnail(audio, fs, length=length, seg_method=seg_method)
     else:
         print("Unrecognized similarity method: {}".format(method))
@@ -124,10 +124,10 @@ def remove_overlap(segments, adjacency, length):
         for j in range(num_segments):
             this_seg = segments[i]
             that_seg = segments[j]
-            if this_seg < that_seg < this_seg + length:
+            if this_seg <= that_seg <= this_seg + length:
                 adjacency[i, j] = 0
                 adjacency[j, i] = 0
-            elif that_seg < this_seg < that_seg + length:
+            elif that_seg <= this_seg <= that_seg + length:
                 adjacency[i, j] = 0
                 adjacency[j, i] = 0
 

@@ -8,9 +8,9 @@ import fileutils
 # Choose a segmentation method from a given input
 def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular'):
     segments = None
-    if method is 'regular':
+    if method == 'regular':
         segments = segment_regular(audio, fs, length=length, overlap=overlap)
-    elif method is 'onset' or method is 'beat':
+    elif method == 'onset' or method == 'beat':
         segments = segment_onset(audio, fs, length=length, overlap=overlap, method=method)
     else:
         print("Unrecognized segmentation method: {}".format(method))

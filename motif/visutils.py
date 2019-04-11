@@ -178,13 +178,17 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8)
     return ax
 
 
-def plot_metric_bar(x_pos, values, metric_labels, ax=None, color='b'):
+def plot_metric_bar(x_pos, values, ax=None,
+                    metric_labels=None, color='b', group_label=None, width=0.8):
     ax = get_axes(ax)
     ax.bar(x_pos, values,
+           width=width,
            tick_label=metric_labels,
            linewidth=1,
            edgecolor='black',
-           color=color)
+           color=color,
+           label=group_label)
+    # plt.tight_layout()
     return ax
 
 

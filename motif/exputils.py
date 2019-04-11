@@ -9,73 +9,78 @@ import visutils as vis
 import time
 
 
-def segmentation_experiment(audio, fs, length, num_motifs, name='audio', show_plot=(),
-                            methods=('regular', 'onset')):
+def _analysis(analysis_name, audio, fs, length, methods, name='audio', show_plot=(),
+              k=cfg.N_ClUSTERS, title_hook='{}'):
     G_dict = {}
     results_dict = {}
 
     for m in methods:
-        starts, ends, motif_labels, G = analyzer.analyze(audio, fs, num_motifs, seg_length=length, seg_method=m)
+        if analysis_name is 'Segmentation':
+            starts, ends, motif_labels, G = analyzer.analyze(audio, fs,
+                                                             num_motifs=k,
+                                                             seg_length=length,
+                                                             seg_method=m)
+
+        elif analysis_name == 'Similarity':
+            starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
+                                                             seg_length=length,
+                                                             similarity_method=m)
+
+        elif analysis_name == 'K-Means':
+            starts, ends, motif_labels, G = analyzer.analyze(audio, fs, m,
+                                                             seg_length=length,
+                                                             cluster_method='kmeans')
+
+        elif analysis_name == 'Clustering':
+            starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
+                                                             seg_length=length,
+                                                             cluster_method=m)
+        else:
+            print("Unrecognized analysis name: {exp_name}".format(exp_name=analysis_name))
+            return None, None
+
         G_dict[m] = G
         results = motif.pack_motif(starts, ends, motif_labels)
         results_dict[m] = results
 
-        title_hook = 'with {} segmentation'.format(m)
+        title_suffix = title_hook.format(m)
         draw_results(audio, fs, results, show_plot,
                      G=G,
                      name=name,
-                     title_hook=title_hook)
+                     title_hook=title_suffix,
+                     draw_ref=(m is methods[0]))
     return results_dict, G_dict
 
 
-def k_means_experiment(audio, fs, length, name='audio', show_plot=(),
-                       k_clusters=(3, 10)):
-    G_dict = {}
-    results_dict = {}
-    for k in k_clusters:
-        starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
-                                                         seg_length=length,
-                                                         seg_method='onset',
-                                                         cluster_method='kmeans')
-        G_dict[k] = G
-        results = motif.pack_motif(starts, ends, motif_labels)
-        results_dict[k] = results
-
-        num_motifs = np.unique(motif_labels).shape[0]
-        title_hook = 'with {}-means clustering'.format(k)
-        draw_results(audio, fs, results, show_plot,
-                     G=G,
-                     name=name,
-                     title_hook=title_hook,
-                     num_groups=num_motifs,
-                     draw_ref=(k == k_clusters[0]))
+def segmentation_analysis(audio, fs, length, name='audio', show_plot=(),
+                          methods=('regular', 'onset'), k=cfg.N_ClUSTERS):
+    results_dict, G_dict = _analysis('Segmentation', audio, fs, length, methods,
+                                     name=name, show_plot=show_plot, k=k,
+                                     title_hook='with {} segmentation')
     return results_dict, G_dict
 
 
-def thumbnail_experiment(audio, fs, length, name='audio', show_plot=(),
-                         methods=('match', 'shazam'), k=3):
-    G_dict = {}
-    results_dict = {}
-    # If only one method string is passed in
-    if not isinstance(methods, tuple):
-        methods = [methods]
+def similarity_analysis(audio, fs, length, name='audio', show_plot=(),
+                        methods=('match', 'shazam'), k=cfg.N_ClUSTERS):
+    results_dict, G_dict = _analysis('Similarity', audio, fs, length, methods,
+                                     name=name, show_plot=show_plot, k=k,
+                                     title_hook='with {} similarity')
+    return results_dict, G_dict
 
-    for m in methods:
-        starts, ends, motif_labels, G = analyzer.analyze(audio, fs, k,
-                                                         seg_length=length,
-                                                         similarity_method=m)
-        G_dict[m] = G
-        results = motif.pack_motif(starts, ends, motif_labels)
-        results_dict[m] = results
 
-        num_motifs = np.unique(motif_labels).shape[0]
-        title_hook = 'with {} similarity'.format(m)
-        draw_results(audio, fs, results, show_plot,
-                     G=G,
-                     name=name,
-                     title_hook=title_hook,
-                     num_groups=num_motifs,
-                     draw_ref=False)
+def k_means_analysis(audio, fs, length, name='audio', show_plot=(),
+                     k_clusters=(cfg.N_ClUSTERS, cfg.N_ClUSTERS + 1)):
+    results_dict, G_dict = _analysis('K-Means', audio, fs, length, methods=k_clusters,
+                                     name=name, show_plot=show_plot,
+                                     title_hook='with {}-means clustering')
+    return results_dict, G_dict
+
+
+def clustering_analysis(audio, fs, length, name='audio', show_plot=(),
+                        methods=('kmeans', 'agglom', 'spectral'), k=cfg.N_ClUSTERS):
+    results_dict, G_dict = _analysis('Clustering', audio, fs, length, methods,
+                                     name=name, show_plot=show_plot, k=k,
+                                     title_hook='with {} clustering')
     return results_dict, G_dict
 
 
@@ -189,15 +194,49 @@ def draw_results_motif(audio, fs, starts, ends, labels, name='audio', title_hook
     ax.set_title("Motif Segmentation for {} {}".format(name, title_hook))
 
 
+def draw_results_rpf(methods, metric_dict):
+    num_methods = len(methods)
+    measures = ('Recall', 'Precision', 'F_measure')
+    num_measures = len(measures)
+
+    bar_pos = np.arange(num_measures)
+    cur_pos = np.copy(bar_pos)
+    bar_width = (0.7 / num_methods)
+
+    ax = None
+    color_idx = 0
+    for m in methods:
+        ax = vis.plot_metric_bar(cur_pos, metric_dict[m][1:4], ax=ax,
+                                 group_label=m,
+                                 color='C{}'.format(color_idx % 10),
+                                 width=bar_width)
+        cur_pos = cur_pos + bar_width
+        color_idx += 1
+
+    ax.legend()
+    ax.set_xticks(bar_pos + ((num_methods - 1) * bar_width) / 2)
+    ax.set_xticklabels(measures)
+    ax.set_ylabel('Measure')
+    return ax
+
+
+# Write out an entire results set
+def write_results(audio, fs, name, out_dir, methods, results):
+    for m in methods:
+        obs_motifs = results[m]
+        write_name = name + ' ' + m
+        write_motifs(audio, fs, write_name, out_dir, obs_motifs)
+
+
 # Write out all identified motifs
-def write_motifs(audio, fs, name, audio_dir, segments):
+def write_motifs(audio, fs, name, audio_dir, motifs):
     id = int(round(time.time() * 1000))
-    motif_labels = segments[cfg.LABEL_IDX]
+    motif_labels = motifs[cfg.LABEL_IDX]
     num_motifs = motif_labels.shape[0]
     motif_dict = dict.fromkeys(np.unique(motif_labels), 0)
     for i in range(num_motifs):
-        motif_start = int(segments[cfg.START_IDX, i] * fs)
-        motif_end = int(segments[cfg.END_IDX, i] * fs)
+        motif_start = int(motifs[cfg.START_IDX, i] * fs)
+        motif_end = int(motifs[cfg.END_IDX, i] * fs)
         this_motif = audio[motif_start:motif_end]
 
         this_instance = motif_dict[motif_labels[i]]
@@ -232,9 +271,9 @@ def main():
     #                         show_plot=('arc'))
     # k_means_experiment(audio, fs, length, name=name,
     #                    show_plot=('motif'))
-    results, _ = thumbnail_experiment(audio, fs, length, name=name,
-                         show_plot=('motif'),
-                         methods=('match'), k=5)
+    results, _ = similarity_analysis(audio, fs, length, name=name,
+                                     show_plot=('motif'),
+                                     methods=('match'), k=cfg.N_ClUSTERS)
     write_motifs(audio, fs, name, out_dir, results['match'])
     vis.show()
     return
