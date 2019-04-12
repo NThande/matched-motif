@@ -95,6 +95,8 @@ def motif_join(starts, ends, motif_labels):
     label_str = label_str.replace(sep + sep, sep)
     if label_str[0] is sep:
         label_str = label_str[1:]
+
+    # Convert segmentation to new format
     relabels = np.fromstring(label_str, count=-1, sep=sep, dtype=int)
     restarts = np.zeros(relabels.shape)
     re_ends = np.zeros(relabels.shape)
@@ -103,16 +105,24 @@ def motif_join(starts, ends, motif_labels):
         seq_length = 0
         if relabels[i] in label_dict.keys():
             seq_length = label_dict[relabels[i]].shape[0] - 1
-        restarts[i] = starts[label_idx]
-        re_ends[i] = ends[label_idx + seq_length]
+
+        if label_idx >= starts.shape[0]:
+            restarts[i] = starts[starts.shape[0] - 1]
+        else:
+            restarts[i] = starts[label_idx]
+
+        if label_idx + seq_length >= ends.shape[0]:
+            re_ends[i] = ends[ends.shape[0] - 1]
+        else:
+            re_ends[i] = ends[label_idx + seq_length]
+
         label_idx += seq_length + 1
     relabels = sequence_labels(relabels)
     return restarts, re_ends, relabels
 
 
-# Dybamic programming method borrowed from https://www.geeksforgeeks.org/longest-repeating-and-non-overlapping-substring/
-# Returns the longest repeating non-overlapping
-# substring in str
+# Dynamic programming method borrowed from https://www.geeksforgeeks.org/longest-repeating-and-non-overlapping
+# -substring/ Returns the longest repeating non-overlapping substring in str
 def longest_repeated_substring(str):
     n = len(str)
     LCSRe = [[0 for x in range(n + 1)]

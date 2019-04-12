@@ -181,6 +181,8 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8)
 def plot_metric_bar(x_pos, values, ax=None,
                     metric_labels=None, color='b', group_label=None, width=0.8):
     ax = get_axes(ax)
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(color='gray', linestyle='dashed')
     ax.bar(x_pos, values,
            width=width,
            tick_label=metric_labels,

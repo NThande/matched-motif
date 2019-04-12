@@ -53,7 +53,6 @@ def recall(obs_motifs, ref_motifs):
 
 def precision(obs_motifs, ref_motifs):
     # Sum of length of correctly observed motifs
-    # Sum of length of correctly observed motifs
     shared_seg = shared_motifs(obs_motifs, ref_motifs)
     shared_len = sum_segments(shared_seg)
     # Sum of length of observed motifs

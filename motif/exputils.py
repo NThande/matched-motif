@@ -216,7 +216,25 @@ def draw_results_rpf(methods, metric_dict):
     ax.legend()
     ax.set_xticks(bar_pos + ((num_methods - 1) * bar_width) / 2)
     ax.set_xticklabels(measures)
-    ax.set_ylabel('Measure')
+    ax.set_ylabel('Value (0.0 - 1.0)')
+    ax.set_xlabel('Performance Measure (Larger is Better)')
+    return ax
+
+
+def draw_results_single(methods, metric_dict, idx):
+    num_methods = len(methods)
+    bar_pos = np.arange(num_methods)
+    bar_width = 0.7
+
+    ax = None
+    pos_idx = 0
+    for m in methods:
+        ax = vis.plot_metric_bar(bar_pos[pos_idx], metric_dict[m][idx], ax=ax,
+                                 width=bar_width, color='C0')
+        pos_idx +=1
+
+    ax.set_xticks(bar_pos)
+    ax.set_xticklabels(methods)
     return ax
 
 
@@ -224,7 +242,7 @@ def draw_results_rpf(methods, metric_dict):
 def write_results(audio, fs, name, out_dir, methods, results):
     for m in methods:
         obs_motifs = results[m]
-        write_name = name + ' ' + m
+        write_name = name + ' ' + str(m)
         write_motifs(audio, fs, write_name, out_dir, obs_motifs)
 
 
