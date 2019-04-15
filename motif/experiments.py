@@ -1,4 +1,7 @@
+from matplotlib.ticker import MaxNLocator
+
 import config as cfg
+import explots
 import exputils
 import fileutils
 import metrics
@@ -7,12 +10,12 @@ import visutils as vis
 
 
 def segmentation_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
-    methods = ('regular', 'onset', 'beat')
+    methods = ('Regular', 'Onset', 'Beat')
     _experiment('Segmentation', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
 def similarity_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
-    methods = ('match', 'shazam')
+    methods = ('Match', 'Shazam')
     _experiment('Similarity', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
@@ -22,7 +25,7 @@ def k_means_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
 
 
 def clustering_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
-    methods = ('kmeans', 'spectral', 'agglom')
+    methods = ('K-Means', 'Spectral', 'Agglom')
     _experiment('Clustering', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
@@ -59,21 +62,37 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
 
     metric_dict = results_to_metrics(results, methods, ref_motifs)
 
-    ax = exputils.draw_results_rpf(methods, metric_dict)
-    ax.set_title('{exp_name} Comparision for {audio_name}'.format(exp_name=exp_name,
-                                                                  audio_name=audio_name))
+    # Output Plots
+    fig = vis.get_fig()
+    ax = fig.add_subplot(1, 1, 1)
+    if exp_name == 'K-Means':
+        lp = 'k='
+    else:
+        lp = ''
+    ax = explots.draw_results_rpf(methods, metric_dict, ax=ax, label_prefix=lp)
+    ax.set_title('{exp_name} Comparison for {audio_name}'.format(exp_name=exp_name,
+                                                                 audio_name=audio_name))
+    fig.savefig("./bin/graphs/" + "RPF_" + audio_name + "_" + exp_name + ".png", dpi=150)
 
-    ax = exputils.draw_results_single(methods, metric_dict, 4)
-    ax.set_title('{exp_name} Boundary Measure for {audio_name}'.format(exp_name=exp_name,
-                                                                       audio_name=audio_name))
-    ax.set_xlabel('M55555ethod')
-    ax.set_ylabel('Boundary Measure (Smaller is Better)')
+    fig = vis.get_fig()
+    fig.set_size_inches(8.0, 5.5)
+    ax = fig.add_subplot(1, 2, 1)
+    ax = explots.draw_results_single(methods, metric_dict, 4, ax=ax)
+    ax.set_title('Boundary Measure', fontsize=18)
+    ax.set_xlabel('Method', fontsize=16)
+    ax.set_ylabel('Value (Smaller is Better)', fontsize=16)
 
-    ax = exputils.draw_results_single(methods, metric_dict, 0)
-    ax.set_title('{exp_name} Edit Distance for {audio_name}'.format(exp_name=exp_name,
-                                                                    audio_name=audio_name))
-    ax.set_xlabel('Method')
-    ax.set_ylabel('Edit Distance')
+    fig.subplots_adjust(wspace=0.5, top=0.85)
+    ax = fig.add_subplot(1, 2, 2)
+    ax = explots.draw_results_single(methods, metric_dict, 0, ax=ax)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_title('Edit Distance', fontsize=18)
+    ax.set_xlabel('Method', fontsize=16)
+    ax.set_ylabel('Edit Distance (Smaller is Better)', fontsize=16)
+
+    fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
+                 fontsize=24)
+    fig.savefig("./bin/graphs/" + "BED_" + audio_name + "_" + exp_name + ".png", dpi=150)
 
     if write_motifs:
         exputils.write_results(audio, fs, audio_name, out_dir, methods, results)
@@ -100,13 +119,13 @@ def results_to_metrics(results, methods, ref_motifs):
 
 # The experiments run to generate our output data
 def main():
-    name = 't1.2'
+    name = 't1'
     in_dir = "./bin/test"
     out_dir = "./bin/results"
-    segmentation_experiment(name, in_dir, out_dir, show_plot=('motif'), write_motifs=True)
-    # k_means_experiment(name, in_dir, out_dir, write_motifs=True)
-    # similarity_experiment(name, in_dir, out_dir)
-    # clustering_experiment(name, in_dir, out_dir)
+    segmentation_experiment(name, in_dir, out_dir, show_plot=(), write_motifs=False)
+    # k_means_experiment(name, in_dir, out_dir, show_plot=('matrix', 'motif'), write_motifs=False)
+    # similarity_experiment(name, in_dir, out_dir, show_plot=(), write_motifs=False)
+    # clustering_experiment(name, in_dir, out_dir, show_plot=('arc',), write_motifs=False)
     vis.show()
     return
 

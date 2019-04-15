@@ -8,7 +8,6 @@ import match_filter
 import landmark_filter
 import motifutils as motif
 
-
 NODE_LABEL = cfg.NODE_LABEL
 CLUSTER_NAME = cfg.CLUSTER_NAME
 CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
@@ -17,14 +16,15 @@ CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 def analyze(audio, fs,
             num_motifs=cfg.N_ClUSTERS,
             seg_length=cfg.SEGMENT_LENGTH,
-            threshold=3,
+            threshold=10,
             seg_method='beat',
-            cluster_method='kmeans',
+            cluster_method='agglom',
             similarity_method='match',
-            topk_thresh=True,
+            with_topk=True,
             with_graph=True,
             with_overlap=False,
-            with_reweight=True):
+            with_reweight=True,
+            with_fill=True):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = self_similarity(audio, fs,
                                                 method=similarity_method,
@@ -32,19 +32,19 @@ def analyze(audio, fs,
                                                 seg_method=seg_method)
     print("Done Self-Similarity")
 
-    # Add additional weights for segments that are close together in time
-    if with_reweight:
-        adjacency = reweight_by_time(segments, adjacency)
-
     # Avoid overlap effects for any window
     if with_overlap is False:
         adjacency = remove_overlap(segments, adjacency, seg_length)
+
+    # Add additional weights for segments that are close together in time
+    if with_reweight:
+        adjacency = reweight_by_time(segments, adjacency)
 
     # Create labels for nodes
     time_labels = seg.seg_to_label(segments, segments + seg_length)
 
     # Adjacency matrix thresholding
-    if topk_thresh:
+    if with_topk:
         adjacency = topk_threshold(adjacency, threshold)
     else:
         adjacency[adjacency < threshold] = 0
@@ -58,7 +58,7 @@ def analyze(audio, fs,
 
         # Add clustering results to graph attributes
         graph.add_node_attribute(G, motif_labels, CLUSTER_NAME)
-        graph.node_to_edge_attribute(G, CLUSTER_NAME, CLUSTER_EDGE_NAME, from_source=False)
+        graph.node_to_edge_attribute(G, CLUSTER_NAME, CLUSTER_EDGE_NAME, from_source=True)
 
     else:
         # Create incidence matrix and cluster directly
@@ -75,15 +75,20 @@ def analyze(audio, fs,
     motif_labels = motif.sequence_labels(motif_labels)
     seg_starts, seg_ends, motif_labels = motif.motif_join(seg_starts, seg_ends, motif_labels)
 
-    # Prune short motifs outs of full segmentation
+    # Prune short motifs outs of full segmentation, fill any new gaps
     seg_starts, seg_ends, motif_labels = motif.prune_motifs(seg_starts, seg_ends, motif_labels,
                                                             min_length=cfg.SEGMENT_LENGTH / 2)
+
+    if with_fill:
+        seg_starts, seg_ends, motif_labels = motif.fill_motif_gaps(seg_starts, seg_ends, motif_labels,
+                                                                   gap_length=cfg.SEGMENT_LENGTH / 2)
     motif_labels = motif.sequence_labels(motif_labels)
     return seg_starts, seg_ends, motif_labels, G
 
 
 # Choose a method for calculating similarity
 def self_similarity(audio, fs, length, method, seg_method):
+    method = method.lower()
     if method == 'match':
         return match_filter.thumbnail(audio, fs, length=length, seg_method=seg_method)
     elif method == 'shazam':
@@ -95,25 +100,29 @@ def self_similarity(audio, fs, length, method, seg_method):
 # Performs a hard threshold on an adjacency matrix with different methods
 def topk_threshold(adjacency, threshold):
     # Keep only the top k connections for each node
+    print("Pre-Threshold: {num_edges}, threshold = {thresh}".format(num_edges=np.count_nonzero(adjacency),
+                                                                    thresh=threshold))
     if threshold >= 1:
+        num_nodes = adjacency.shape[0]
         k = int(threshold)
-        for i in range(adjacency.shape[0]):
+        if num_nodes < k:
+            return adjacency
+        for i in range(num_nodes):
             row = adjacency[i, :]
-            if row.shape[0] < k:
-                break
-            else:
-                kth_entry = row[np.argsort(row)[k - 1]]
-                row[row < kth_entry] = 0
-                adjacency[i, :] = row
+            kth_entry = row[np.argsort(row)[num_nodes - 1 - k - 1]]
+            row[row < kth_entry] = 0
+            adjacency[i, :] = row
     # Only keep top proportion of nodes
-    elif threshold >= 0:
+    elif threshold > 0:
         adj_vals = adjacency.flatten()
         adj_vals = np.sort(adj_vals[adj_vals.nonzero()])
-        adj_vals_idx = int(adj_vals.shape[0] * (1 - threshold))
+        adj_vals_idx = int(adj_vals.shape[0] * threshold)
         thresh_val = adj_vals[adj_vals_idx]
         adjacency[adjacency < thresh_val] = 0
     else:
         return adjacency
+    print("Post-Threshold: {num_edges}, threshold = {thresh}".format(num_edges=np.count_nonzero(adjacency),
+                                                                    thresh=threshold))
     return adjacency
 
 

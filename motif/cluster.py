@@ -3,7 +3,7 @@ from sklearn import cluster as skc
 
 
 # Choose a clustering method from a given input
-def cluster(incidence, k_clusters, method='kmeans', graph=None, weight='weight'):
+def cluster(incidence, k_clusters, method='k-means', graph=None, weight='weight'):
     clusters = None
     if incidence is None:
         if graph is None:
@@ -11,7 +11,8 @@ def cluster(incidence, k_clusters, method='kmeans', graph=None, weight='weight')
             return clusters
         incidence = nx.incidence_matrix(graph, weight=weight).toarray()
 
-    if method == 'kmeans':
+    method = method.lower()
+    if method == 'k-means':
         clusters = k_means(incidence, k_clusters)
     elif method == 'agglom':
         clusters = agglom(incidence, k_clusters)

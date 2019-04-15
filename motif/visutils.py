@@ -4,23 +4,46 @@ import librosa.display
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-
+import matplotlib as mpl
 import arcgraph as arc
 import config as cfg
 import graphutils as graph
 import motifutils as motif
 
+mpl.style.use('seaborn-white')
+# print(mpl.rcParams.keys())
+mpl.rcParams.update({'font.size': 16,
+                     'axes.titlesize': 22,
+                     'axes.labelsize': 20,
+                     'figure.titlesize': 24,
+                     'figure.titleweight': 'bold'})
+plt.rcParams['image.cmap'] = 'plasma'
 
-def get_axes(ax):
+
+# ax = plt.figure().gca()
+# fig = plt.gcf()
+# ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+def get_fig():
+    fig = plt.figure()
+    fig.set_size_inches(8.0, 5.5)
+    return fig
+
+
+def save_fig(fig, out_dir, name):
+    fig.savefig(out_dir + name + ".png", dpi=150)
+
+
+def _get_axes(ax):
     if ax is None:
-        fig = plt.figure()
+        fig = get_fig()
         ax = fig.add_subplot(1, 1, 1)
     return ax
 
 
 # Plot the similarity used to calculate a thumbnail.
 def plot_similarity_curve(seg_similarity, segment_times, labels=None, ax=None, color='rx-'):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     ax.plot(segment_times, seg_similarity, color)
     ax.set_xlabel("Window Starting Point (s)")
     ax.set_ylabel("Window Similarity")
@@ -40,60 +63,63 @@ def add_motif_labels_with_df(ax, labels_df, alpha=0.2):
 def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
     ax.set_xlim(ax.get_xlim()[0] - 1, ax.get_xlim()[1] + 1)
     unique_motifs = {}
+    linewidth = 3
     for i in range(0, starts.shape[0]):
         this_label = int(labels[i])
         if this_label in unique_motifs:
             ax.axvspan(starts[i], ends[i], alpha=alpha, facecolor='C{}'.format(labels[i] % 10),
-                       linestyle='-.', edgecolor='k')
+                       linestyle='-', edgecolor='k', linewidth=linewidth)
         else:
             unique_motifs[this_label] = 1
             ax.axvspan(starts[i], ends[i], alpha=alpha, facecolor='C{}'.format(this_label % 10),
-                       linestyle='-.', edgecolor='k', label='Motif {}'.format(this_label))
+                       linestyle='-', edgecolor='k', linewidth=linewidth, label='Motif {}'.format(this_label))
     return ax
 
 
 # Plot the input similarity matrix using matplotlib
 def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     num_windows = similarity_matrix.shape[0]
-    ax.set_xlabel("Window #")
-    ax.set_ylabel("Window #")
+    # ax.set_xlabel("Window #")
+    # ax.set_ylabel("Window #")
     ax.xaxis.set_ticks(np.arange(0, num_windows, tick_step))
     ax.yaxis.set_ticks(np.arange(0, num_windows, tick_step))
     image = ax.imshow(similarity_matrix)
+    ax.set_ylim(ax.get_ylim()[1], ax.get_ylim()[0])
     cbar = plt.colorbar(image, format='%2.2f')
     cbar.set_label('Similarity')
     return ax
 
 
 # Plot the overlap of the segments in a staircase format
-def plot_window_overlap(segments, seg_lengths, tick_step=1, ax=None):
-    ax = get_axes(ax)
+def plot_window_overlap(segments, seg_lengths, audio_len, tick_step=1, ax=None):
+    ax = _get_axes(ax)
 
     num_windows = segments.shape[0]
-    min_seg = segments[0]
-    max_seg = segments[num_windows - 1] + seg_lengths[num_windows - 1]
+    min_seg = 0
+    max_seg = audio_len
 
     # plt.title("Window layout for {}s windows at {}s intervals".format(window_length, window_step))
-    ax.set_xlabel("Seconds")
-    ax.set_ylabel("Window #")
-    ax.set_ylim(-1, num_windows)
+    # ax.set_xlabel("Seconds")
+    # ax.set_ylabel("Window #")
+    ax.set_ylim(-1, num_windows + 1)
     ax.set_xlim(min_seg, max_seg)
-    ax.xaxis.set_ticks(np.arange(0, int(max_seg), tick_step))
-    ax.yaxis.set_ticks(np.arange(0, num_windows - 1, tick_step))
+    audio_step = int(audio_len/4)
+    ax.xaxis.set_ticks(np.arange(0, audio_len + audio_step, audio_step))
+    ax.yaxis.set_ticks(np.arange(0, num_windows + tick_step, tick_step))
 
     for i in range(0, num_windows):
         line_start = segments[i]
         line_end = segments[i] + seg_lengths[i]
-        ax.axhline(i, line_start / max_seg, line_end / max_seg)
-        ax.plot([line_start, line_end], [i, i], 'rx')
+        ax.axhspan(i, i+1, line_start / max_seg, line_end / max_seg, linewidth=2, edgecolor='k', facecolor='w')
+        # ax.plot([line_start, line_end], [i, i], 'rx')
     return ax
 
 
 # Plot the input short-term Fourier Transform
 def plot_stft(sxx, fs=cfg.FS, ax=None, frames=False,
               hop_length=(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO)):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
 
     D = librosa.amplitude_to_db(np.abs(sxx), ref=np.max)
     if frames:
@@ -111,7 +137,7 @@ def plot_peaks(peaks, ax=None, color='rx'):
     if peaks is None:
         return
 
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     idx_f = cfg.FREQ_IDX
     ax.plot(peaks[:, idx_f + 1], peaks[:, idx_f], color)
     ax.set_ylabel('Frequency Frame')
@@ -126,7 +152,7 @@ def plot_pairs(peaks, pairs, inc=50, ax=None,
                pair_color='k*'):
     if peaks is None or pairs is None:
         return
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
 
     # Choose 1/inc pairs to plot
     pair_mask = np.zeros(pairs.shape[0]).astype(int)
@@ -156,7 +182,7 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
                          pair_color='c*'):
     if peaks is None or pairs is None:
         return
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     ax = plot_stft(sxx, ax=ax, frames=True)
     ax = plot_pairs(peaks, pairs, inc=inc, ax=ax,
                     line_color=line_color,
@@ -166,58 +192,60 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
 
 
 # Plot an audio segmentation on top of the audio waveform
-def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.8):
-    ax = get_axes(ax)
-    librosa.display.waveplot(audio, fs, ax=ax, color='b')
+def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.5):
+    ax = _get_axes(ax)
+    librosa.display.waveplot(audio, fs, ax=ax, color='gray')
     labels = labels.astype(int)
     add_motif_labels(ax, starts, ends, labels, alpha)
     ax.set_xlabel("Time(s)")
     ax.set_ylabel("Amplitude")
-    plt.xticks(np.arange(int(audio.shape[0] / fs) + 1, step=2))
-    ax.legend()
+    audio_len = int(audio.shape[0] / fs)
+    plt.xticks(np.arange(audio_len + 1, step=np.ceil(audio_len / 10)))
+    ax.legend(frameon=True).set_draggable(state=True)
     return ax
 
 
 def plot_metric_bar(x_pos, values, ax=None,
                     metric_labels=None, color='b', group_label=None, width=0.8):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     ax.set_axisbelow(True)
     ax.yaxis.grid(color='gray', linestyle='dashed')
     ax.bar(x_pos, values,
            width=width,
            tick_label=metric_labels,
-           linewidth=1,
+           linewidth=3,
            edgecolor='black',
            color=color,
            label=group_label)
-    # plt.tight_layout()
     return ax
 
 
 # Plot the similarity used to calculate a thumbnail.
 def plot_metric_curve(x_pos, values, metric_label=None, ax=None, color='rx-'):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     ax.plot(x_pos, values, color, label=metric_label)
     return ax
 
 
 # Draw Chord diagram of graph g
-def draw_chordgraph(g,
+def draw_chordgraph(G,
                     node_data=None,
                     label_col='index',
                     size=200,
                     cmap='Category20',
                     title='',
                     draw_labels=True,
-                    edge_color='source',
+                    edge_color='E-Group',
                     node_color='index'):
     hv.extension('bokeh')
     hv.output(size=size)
 
     # Get the edge list of the graph
-    edge_data = nx.to_pandas_edgelist(g)
+    H = nx.to_undirected(G)
+    edge_data = nx.to_pandas_edgelist(H)
 
     # Enforce that the value column is in the right position in the dataframe
+    print(edge_data.columns)
     val_loc = 2
     cur_loc = edge_data.columns.get_loc("value")
     cols = list(edge_data.columns.values)
@@ -255,7 +283,7 @@ def draw_chordgraph(g,
 
 # Draw a simple circular node graph of g
 def draw_netgraph(g, ax=None, **kwargs):
-    ax = get_axes(ax)
+    ax = _get_axes(ax)
     node_layout = kwargs.setdefault('node_layout', nx.circular_layout(g))
     nx.draw(g, pos=node_layout,
             with_labels=True,
@@ -272,13 +300,13 @@ def draw_arcgraph(g, ax=None,
                   node_color='w',
                   node_size=20.,
                   node_positions=None,
-                  edge_width=3.,
+                  edge_width=5.,
                   edge_color=None,
                   **kwargs
                   ):
     adj_G = np.tril(nx.to_numpy_array(g, weight=weight_attr))
-    vertical_shift = kwargs.setdefault('vertical_shift', 2)
-    ax = get_axes(ax)
+    vertical_shift = kwargs.setdefault('vertical_shift', 1 + (node_size / 100))
+    ax = _get_axes(ax)
 
     # Draw arcgraph according to arguments
     if node_positions is not None:

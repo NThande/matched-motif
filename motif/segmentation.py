@@ -8,6 +8,8 @@ import fileutils
 # Choose a segmentation method from a given input
 def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular'):
     segments = None
+    print(method)
+    method = method.lower()
     if method == 'regular':
         segments = segment_regular(audio, fs, length=length, overlap=overlap)
     elif method == 'onset' or method == 'beat':
@@ -17,8 +19,8 @@ def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular'):
     return segments
 
 
-# Create regular segments of fixed length with an overlap ratio in seconds
-def segment_regular(audio, fs, length, overlap):
+# Create regular segments of fixed length that overlap by the overlap factor
+def segment_regular(audio, fs, length, overlap=0.5):
     total_length = audio.shape[0] / fs
     segment_list = []
     k = 0
@@ -36,9 +38,9 @@ def segment_onset(audio, fs,
                   method='onset',
                   prune=False,
                   fill_space=False):
-    if method is 'onset':
+    if method == 'onset':
         onsets = lb.onset.onset_detect(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time', backtrack=True)
-    elif method is 'beat':
+    elif method == 'beat':
         _, onsets = lb.beat.beat_track(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time')
     else:
         return None

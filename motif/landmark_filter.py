@@ -5,7 +5,7 @@ import segmentation as seg
 import visutils as vis
 
 
-def thumbnail(audio, fs, length, include_self=False, seg_method='regular'):
+def thumbnail(audio, fs, length, include_self=True, seg_method='regular'):
     # Segment the audio
     segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)
     segments = segments_in_seconds * fs

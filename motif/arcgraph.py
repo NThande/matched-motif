@@ -420,7 +420,7 @@ def draw_node_labels(node_positions,
     artists = dict()  # there is no text collection so we'll fake one
     for ii, label in node_labels.items():
         x, y = node_positions[ii]
-        text_object = ax.text(x, y - vertical_shift,
+        text_object = ax.text(x - 1, y - vertical_shift,
                               label,
                               size=font_size,
                               color=font_color,
@@ -432,7 +432,7 @@ def draw_node_labels(node_positions,
                               transform=ax.transData,
                               bbox=bbox,
                               clip_on=False,
-                              rotation=90)
+                              rotation=30)
         artists[ii] = text_object
 
     return artists

@@ -67,6 +67,34 @@ def prune_motifs(starts, ends, motif_labels, min_length=1):
     return starts, ends, motif_labels
 
 
+# If two motifs of the same class are separated by a gap of less than gap_length, extend the first motif to fill the gap
+def fill_motif_gaps(starts, ends, motif_labels, gap_length=0.5):
+    num_motifs = motif_labels.shape[0]
+    for i in range(num_motifs - 1):
+        if motif_labels[i] == motif_labels[i + 1]:
+            gap = starts[i + 1] - ends[i]
+            if 0 < gap <= gap_length:
+                ends[i] = starts[i + 1]
+    return starts, ends, motif_labels
+
+
+# If two motifs of the same class are separated by a gap of less than gap_length, merge the motifs
+def merge_motif_gaps(starts, ends, motif_labels, gap_length=1):
+    num_motifs = motif_labels.shape[0]
+    prune_list = []
+    for i in range(num_motifs - 1):
+        if motif_labels[i] == motif_labels[i + 1]:
+            gap = starts[i + 1] - ends[i]
+            if 0 < gap <= gap_length:
+                prune_list.append(i)
+                starts[i + 1] = starts[i]
+
+    starts = np.delete(starts, prune_list)
+    ends = np.delete(ends, prune_list)
+    motif_labels = np.delete(motif_labels, prune_list)
+    return starts, ends, motif_labels
+
+
 # Join motifs using the string-join method
 def motif_join(starts, ends, motif_labels):
     # Transform labels to string
