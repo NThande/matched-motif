@@ -1,4 +1,3 @@
-from matplotlib.ticker import MaxNLocator
 
 import config as cfg
 import explots
@@ -7,6 +6,7 @@ import fileutils
 import metrics
 import motifutils as motif
 import visutils as vis
+import visualizations
 
 
 def segmentation_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
@@ -63,39 +63,32 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
     metric_dict = results_to_metrics(results, methods, ref_motifs)
 
     # Output Plots
-    fig = vis.get_fig()
-    ax = fig.add_subplot(1, 1, 1)
-    if exp_name == 'K-Means':
-        lp = 'k='
-    else:
-        lp = ''
-    ax = explots.draw_results_rpf(methods, metric_dict, ax=ax, label_prefix=lp)
-    ax.set_title('{exp_name} Comparison for {audio_name}'.format(exp_name=exp_name,
-                                                                 audio_name=audio_name))
-    fig.savefig("./bin/graphs/" + "RPF_" + audio_name + "_" + exp_name + ".png", dpi=150)
+    if 'bar' in show_plot:
+        if exp_name == 'K-Means':
+            lp = 'k='
+        else:
+            lp = ''
+        fig, ax = explots.draw_results_rpf(methods, metric_dict, label_prefix=lp)
+        fig.suptitle('{exp_name} Comparison for {audio_name}'.format(exp_name=exp_name,
+                                                                     audio_name=audio_name))
 
-    fig = vis.get_fig()
-    fig.set_size_inches(8.0, 5.5)
-    ax = fig.add_subplot(1, 2, 1)
-    ax = explots.draw_results_single(methods, metric_dict, 4, ax=ax)
-    ax.set_title('Boundary Measure', fontsize=18)
-    ax.set_xlabel('Method', fontsize=16)
-    ax.set_ylabel('Value (Smaller is Better)', fontsize=16)
+        fig = explots.draw_results_bed(methods, metric_dict, audio_name, exp_name)
+        fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
+                     fontsize=24)
+        vis.save_fig(fig, './bin/graphs/', 'BED_{}_{}'.format(audio_name, exp_name))
 
-    fig.subplots_adjust(wspace=0.5, top=0.85)
-    ax = fig.add_subplot(1, 2, 2)
-    ax = explots.draw_results_single(methods, metric_dict, 0, ax=ax)
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_title('Edit Distance', fontsize=18)
-    ax.set_xlabel('Method', fontsize=16)
-    ax.set_ylabel('Edit Distance (Smaller is Better)', fontsize=16)
-
-    fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
-                 fontsize=24)
-    fig.savefig("./bin/graphs/" + "BED_" + audio_name + "_" + exp_name + ".png", dpi=150)
+    if 'group' in show_plot:
+        label_key = 'Ideal'
+        methods_grp = (label_key,) + methods
+        results[label_key] = ref_motifs
+        fig = visualizations.draw_motif_group(audio, fs, results, methods_grp, title='', subplots=(2, 2))
+        fig.suptitle('{exp_name} Motifs on {audio_name}'.format(exp_name=exp_name, audio_name=audio_name))
+        vis.save_fig(fig, './bin/graphs/', 'GRP_{}_{}'.format(audio_name, exp_name))
 
     if write_motifs:
         exputils.write_results(audio, fs, audio_name, out_dir, methods, results)
+
+    return metric_dict
 
 
 # Convert results dict to metrics dict
@@ -122,7 +115,7 @@ def main():
     name = 't1'
     in_dir = "./bin/test"
     out_dir = "./bin/results"
-    segmentation_experiment(name, in_dir, out_dir, show_plot=(), write_motifs=False)
+    segmentation_experiment(name, in_dir, out_dir, show_plot=('bar', 'group'), write_motifs=False)
     # k_means_experiment(name, in_dir, out_dir, show_plot=('matrix', 'motif'), write_motifs=False)
     # similarity_experiment(name, in_dir, out_dir, show_plot=(), write_motifs=False)
     # clustering_experiment(name, in_dir, out_dir, show_plot=('arc',), write_motifs=False)

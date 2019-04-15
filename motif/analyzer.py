@@ -16,7 +16,7 @@ CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 def analyze(audio, fs,
             num_motifs=cfg.N_ClUSTERS,
             seg_length=cfg.SEGMENT_LENGTH,
-            threshold=10,
+            threshold=0,
             seg_method='beat',
             cluster_method='agglom',
             similarity_method='match',
@@ -24,7 +24,8 @@ def analyze(audio, fs,
             with_graph=True,
             with_overlap=False,
             with_reweight=True,
-            with_fill=True):
+            with_fill=True,
+            with_join=True):
     # Segmentation and Similarity Calculation
     _, _, segments, adjacency = self_similarity(audio, fs,
                                                 method=similarity_method,
@@ -73,11 +74,13 @@ def analyze(audio, fs,
     # Merge motifs and rebuild text labels
     seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
     motif_labels = motif.sequence_labels(motif_labels)
-    seg_starts, seg_ends, motif_labels = motif.motif_join(seg_starts, seg_ends, motif_labels)
 
-    # Prune short motifs outs of full segmentation, fill any new gaps
-    seg_starts, seg_ends, motif_labels = motif.prune_motifs(seg_starts, seg_ends, motif_labels,
-                                                            min_length=cfg.SEGMENT_LENGTH / 2)
+    if with_join:
+        seg_starts, seg_ends, motif_labels = motif.motif_join(seg_starts, seg_ends, motif_labels)
+
+        # Prune short motifs outs of full segmentation, fill any new gaps
+        seg_starts, seg_ends, motif_labels = motif.prune_motifs(seg_starts, seg_ends, motif_labels,
+                                                                min_length=cfg.SEGMENT_LENGTH / 2)
 
     if with_fill:
         seg_starts, seg_ends, motif_labels = motif.fill_motif_gaps(seg_starts, seg_ends, motif_labels,

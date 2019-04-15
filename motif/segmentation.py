@@ -8,7 +8,6 @@ import fileutils
 # Choose a segmentation method from a given input
 def segment(audio, fs, length=2, overlap=cfg.OVERLAP_RATIO, method='regular'):
     segments = None
-    print(method)
     method = method.lower()
     if method == 'regular':
         segments = segment_regular(audio, fs, length=length, overlap=overlap)

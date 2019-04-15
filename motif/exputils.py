@@ -7,7 +7,6 @@ import config as cfg
 import explots
 import fileutils
 import motifutils as motif
-import visutils as vis
 
 
 def _analysis(analysis_name, audio, fs, length, methods, name='audio', show_plot=(),
@@ -113,7 +112,7 @@ def write_results(audio, fs, name, out_dir, methods, results):
 
 # Write out all identified motifs in a single analysis
 def write_motifs(audio, fs, name, audio_dir, motifs):
-    id = int(round(time.time() * 1000))
+    time_id = int(round(time.time() * 1000))
     motif_labels = motifs[cfg.LABEL_IDX]
     num_motifs = motif_labels.shape[0]
     motif_dict = dict.fromkeys(np.unique(motif_labels), 0)
@@ -127,7 +126,7 @@ def write_motifs(audio, fs, name, audio_dir, motifs):
         this_name = "{name}_m{motif}_i{instance}_{id}".format(name=name,
                                                               motif=int(motif_labels[i]),
                                                               instance=this_instance,
-                                                              id=id)
+                                                              id=time_id)
 
         fileutils.write_audio(this_motif, fs, this_name, audio_dir)
     return
@@ -151,23 +150,13 @@ def main():
 
     # explots.draw_reference(audio, fs, audio_labels, name=name,
     #                show_plot=('motif',))
-    # segmentation_experiment(audio, fs, length, num_motifs=3, name=name,
+    # segmentation_analysis(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc',))
-    # k_means_experiment(audio, fs, length, name=name,
+    # k_means_analysis(audio, fs, length, name=name,
     #                    show_plot=('motif',))
     thresh = 0.95
     results, G_set = threshold_analysis(audio, fs, length, name=name,
                                         show_plot=('arc'), threshold=thresh)
-    # write_motifs(audio, fs, name, out_dir, results['Default'])
-    # explots.draw_matrix_evolution(audio, fs, length, name=name)
-    # explots.draw_matrix_arc_chord_demo(G_set[thresh], name)
-    # fig = vis.get_fig()
-    # ax = fig.add_subplot(1, 1, 1)
-    # explots.draw_results_arc(G_set[thresh], name, '', num_groups=cfg.N_ClUSTERS, with_labels=True, ax=ax)
-    # ax.set_title('Arc Graph Clustering Example')
-    # ax.set_xlabel("Time (s)")
-    # vis.save_fig(fig, './bin/graphs/', 'ARC_{}_c'.format(name))
-    # vis.show()
     return
 
 

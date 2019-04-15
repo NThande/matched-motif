@@ -79,16 +79,22 @@ def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
 # Plot the input similarity matrix using matplotlib
 def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     ax = _get_axes(ax)
+    ax, image = plot_matrix(similarity_matrix, ax)
     num_windows = similarity_matrix.shape[0]
-    # ax.set_xlabel("Window #")
-    # ax.set_ylabel("Window #")
+    ax.set_xlabel("Window #")
+    ax.set_ylabel("Window #")
     ax.xaxis.set_ticks(np.arange(0, num_windows, tick_step))
     ax.yaxis.set_ticks(np.arange(0, num_windows, tick_step))
-    image = ax.imshow(similarity_matrix)
-    ax.set_ylim(ax.get_ylim()[1], ax.get_ylim()[0])
     cbar = plt.colorbar(image, format='%2.2f')
     cbar.set_label('Similarity')
     return ax
+
+
+def plot_matrix(matrix, ax=None):
+    ax = _get_axes(ax)
+    image = ax.imshow(matrix)
+    ax.set_ylim(ax.get_ylim()[1], ax.get_ylim()[0])
+    return ax, image
 
 
 # Plot the overlap of the segments in a staircase format
@@ -99,9 +105,6 @@ def plot_window_overlap(segments, seg_lengths, audio_len, tick_step=1, ax=None):
     min_seg = 0
     max_seg = audio_len
 
-    # plt.title("Window layout for {}s windows at {}s intervals".format(window_length, window_step))
-    # ax.set_xlabel("Seconds")
-    # ax.set_ylabel("Window #")
     ax.set_ylim(-1, num_windows + 1)
     ax.set_xlim(min_seg, max_seg)
     audio_step = int(audio_len/4)
@@ -194,14 +197,20 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
 # Plot an audio segmentation on top of the audio waveform
 def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.5):
     ax = _get_axes(ax)
-    librosa.display.waveplot(audio, fs, ax=ax, color='gray')
+    plot_audio_waveform(audio, fs, ax)
     labels = labels.astype(int)
     add_motif_labels(ax, starts, ends, labels, alpha)
-    ax.set_xlabel("Time(s)")
-    ax.set_ylabel("Amplitude")
     audio_len = int(audio.shape[0] / fs)
     plt.xticks(np.arange(audio_len + 1, step=np.ceil(audio_len / 10)))
     ax.legend(frameon=True).set_draggable(state=True)
+    return ax
+
+
+def plot_audio_waveform(audio, fs, ax=None):
+    ax = _get_axes(ax)
+    librosa.display.waveplot(audio, fs, ax=ax, color='gray')
+    ax.set_xlabel("Time(s)")
+    ax.set_ylabel("Amplitude")
     return ax
 
 
@@ -228,7 +237,7 @@ def plot_metric_curve(x_pos, values, metric_label=None, ax=None, color='rx-'):
 
 
 # Draw Chord diagram of graph g
-def draw_chordgraph(G,
+def plot_chordgraph(G,
                     node_data=None,
                     label_col='index',
                     size=200,
@@ -282,7 +291,7 @@ def draw_chordgraph(G,
 
 
 # Draw a simple circular node graph of g
-def draw_netgraph(g, ax=None, **kwargs):
+def plot_netgraph(g, ax=None, **kwargs):
     ax = _get_axes(ax)
     node_layout = kwargs.setdefault('node_layout', nx.circular_layout(g))
     nx.draw(g, pos=node_layout,
@@ -293,12 +302,12 @@ def draw_netgraph(g, ax=None, **kwargs):
 
 
 # Draw arc diagram of graph g
-def draw_arcgraph(g, ax=None,
+def plot_arcgraph(g, ax=None,
                   weight_attr='value',
                   node_order=None,
                   node_labels=None,
                   node_color='w',
-                  node_size=20.,
+                  node_size=50.,
                   node_positions=None,
                   edge_width=5.,
                   edge_color=None,
@@ -351,9 +360,9 @@ def main():
         nx.set_edge_attributes(G, {(u, v): {'value': np.random.randint(0, 100)}})
     node_data = graph.to_node_dataframe(G)
     node_dict = graph.to_node_dict(G)
-    draw_netgraph(G)
-    draw_arcgraph(G, node_labels=node_dict, node_size=35.)
-    c = draw_chordgraph(G, size=200, node_data=node_data, label_col='label')
+    plot_netgraph(G)
+    plot_arcgraph(G, node_labels=node_dict, node_size=35.)
+    c = plot_chordgraph(G, size=200, node_data=node_data, label_col='label')
     show(c)
     show()
     return
