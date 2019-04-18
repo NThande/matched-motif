@@ -24,7 +24,7 @@ def cluster(incidence, k_clusters, method='k-means', graph=None, weight='weight'
 
 
 # Cluster using k means with k_clusters clusters
-def k_means(incidence, k_clusters, n_init=200):
+def k_means(incidence, k_clusters, n_init=250):
     kmeans_clf = skc.KMeans(n_clusters=k_clusters, n_init=n_init)
     kmeans = kmeans_clf.fit_predict(incidence)
     return kmeans

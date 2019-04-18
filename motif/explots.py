@@ -131,9 +131,7 @@ def draw_results_motif(audio, fs, starts, ends, labels, name='audio', title_hook
 
 
 def draw_results_rpf(methods, metric_dict, ax=None, label_prefix=''):
-    fig = vis.get_fig()
-    ax = fig.add_subplot(1, 1, 1)
-
+    ax = vis.get_axes(ax)
     num_methods = len(methods)
     measures = ('Recall', 'Precision', 'F-Measure')
     num_measures = len(measures)
@@ -156,10 +154,12 @@ def draw_results_rpf(methods, metric_dict, ax=None, label_prefix=''):
     ax.set_xticklabels(measures)
     ax.set_ylabel('Value (0.0 - 1.0)')
     ax.set_xlabel('Performance Measure (Larger is Better)')
-    return fig, ax
+    ax.set_ylim(0, 1.0)
+    return ax
 
 
 def draw_results_single(methods, metric_dict, idx, ax=None):
+    ax = vis.get_axes(ax)
     num_methods = len(methods)
     bar_width = 0.175
     bar_pos = np.arange(num_methods) * bar_width * 2
@@ -175,16 +175,13 @@ def draw_results_single(methods, metric_dict, idx, ax=None):
     return ax
 
 
-def draw_results_bed(methods, metric_dict, audio_name, exp_name):
-    fig = vis.get_fig()
-    fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
-                 fontsize=24)
-
+def draw_results_bed(methods, metric_dict, audio_name, exp_name, fig):
     ax = fig.add_subplot(1, 2, 1)
     ax = draw_results_single(methods, metric_dict, 4, ax=ax)
     ax.set_title('Boundary Measure', fontsize=18)
     ax.set_xlabel('Method', fontsize=16)
     ax.set_ylabel('Value (Smaller is Better)', fontsize=16)
+    ax.set_ylim(0, 0.50)
 
     ax = fig.add_subplot(1, 2, 2)
     ax = draw_results_single(methods, metric_dict, 0, ax=ax)
@@ -192,9 +189,10 @@ def draw_results_bed(methods, metric_dict, audio_name, exp_name):
     ax.set_title('Edit Distance', fontsize=18)
     ax.set_xlabel('Method', fontsize=16)
     ax.set_ylabel('Edit Distance (Smaller is Better)', fontsize=16)
+    ax.set_ylim(0, 30)
 
     fig.subplots_adjust(wspace=0.5, top=0.85)
-    return fig
+    return
 
 
 def main():

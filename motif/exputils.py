@@ -7,10 +7,11 @@ import config as cfg
 import explots
 import fileutils
 import motifutils as motif
+import visutils
 
 
 def _analysis(analysis_name, audio, fs, length, methods, name='audio', show_plot=(),
-              k=cfg.N_ClUSTERS, title_hook='{}', threshold=0):
+              k=cfg.N_ClUSTERS, title_hook='{}', threshold=cfg.K_THRESH):
     G_dict = {}
     results_dict = {}
 
@@ -20,7 +21,7 @@ def _analysis(analysis_name, audio, fs, length, methods, name='audio', show_plot
     for m in methods:
         if analysis_name == 'Segmentation':
             starts, ends, motif_labels, G = analyzer.analyze(audio, fs,
-                                                             num_motifs=k,
+                                                             k_clusters=k,
                                                              seg_length=length,
                                                              seg_method=m,
                                                              threshold=threshold)
@@ -57,7 +58,8 @@ def _analysis(analysis_name, audio, fs, length, methods, name='audio', show_plot
                              G=G,
                              name=name,
                              title_hook=title_suffix,
-                             draw_ref=(m is methods[0]))
+                             draw_ref=(m is methods[0]),
+                             num_groups=k)
     return results_dict, G_dict
 
 
@@ -98,7 +100,7 @@ def threshold_analysis(audio, fs, length, name='audio', show_plot=(), threshold=
     results_dict, G_dict = _analysis(exp_name, audio, fs, length, methods=threshold,
                                      name=name, show_plot=show_plot,
                                      title_hook='')
-                                     # title_hook='with {} Threshold')
+    # title_hook='with {} Threshold')
     return results_dict, G_dict
 
 
@@ -137,8 +139,8 @@ def tune_length_with_audio(audio, fs):
 
 
 def main():
-    name = 't1'
-    in_dir = './bin/'
+    name = 'avril'
+    in_dir = './bin/test'
     out_dir = './bin/results'
     audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
     # audio_labels = fileutils.load_labels(name, label_dir=in_dir)
@@ -152,11 +154,12 @@ def main():
     #                show_plot=('motif',))
     # segmentation_analysis(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc',))
-    # k_means_analysis(audio, fs, length, name=name,
-    #                    show_plot=('motif',))
-    thresh = 0.95
+    # k_means_analysis(audio, fs, length, name=name, k_clusters=(5, 25, 50),
+    #                  show_plot=('motif',))
+    thresh = 0
     results, G_set = threshold_analysis(audio, fs, length, name=name,
-                                        show_plot=('arc'), threshold=thresh)
+                                        show_plot=('motif', 'matrix'), threshold=thresh)
+    visutils.show()
     return
 
 

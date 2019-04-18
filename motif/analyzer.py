@@ -14,11 +14,11 @@ CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 
 
 def analyze(audio, fs,
-            num_motifs=cfg.N_ClUSTERS,
+            k_clusters=cfg.N_ClUSTERS,
             seg_length=cfg.SEGMENT_LENGTH,
-            threshold=0,
+            threshold=cfg.K_THRESH,
             seg_method='beat',
-            cluster_method='agglom',
+            cluster_method='k-means',
             similarity_method='match',
             with_topk=True,
             with_graph=True,
@@ -47,15 +47,17 @@ def analyze(audio, fs,
     # Adjacency matrix thresholding
     if with_topk:
         adjacency = topk_threshold(adjacency, threshold)
+        # adjacency = seg.row_normalize(segments, adjacency)
     else:
         adjacency[adjacency < threshold] = 0
+    adjacency = seg.row_normalize(segments, adjacency)
 
     # Incidence matrix clustering
     G = None
     if with_graph:
         # Create networkx graph and extract its incidence matrix for clustering
         G, relabel_idx = graph.adjacency_matrix_to_graph(adjacency, time_labels, NODE_LABEL, prune=True)
-        motif_labels = cluster.cluster(incidence=None, graph=G, k_clusters=num_motifs, method=cluster_method)
+        motif_labels = cluster.cluster(incidence=None, graph=G, k_clusters=k_clusters, method=cluster_method)
 
         # Add clustering results to graph attributes
         graph.add_node_attribute(G, motif_labels, CLUSTER_NAME)
@@ -65,7 +67,7 @@ def analyze(audio, fs,
         # Create incidence matrix and cluster directly
         M, _ = graph.adjacency_to_incidence_matrix(adjacency, prune=False)
         M, relabel_idx = graph.prune_incidence(M)
-        motif_labels = cluster.cluster(incidence=M, k_clusters=num_motifs, method=cluster_method)
+        motif_labels = cluster.cluster(incidence=M, k_clusters=k_clusters, method=cluster_method)
 
     # Update segment list to account for pruned nodes
     seg_starts = segments[relabel_idx]
@@ -73,6 +75,7 @@ def analyze(audio, fs,
 
     # Merge motifs and rebuild text labels
     seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
+    # print(motif.pack_motif(seg_starts, seg_ends, motif_labels).T)
     motif_labels = motif.sequence_labels(motif_labels)
 
     if with_join:
@@ -151,7 +154,9 @@ def remove_overlap(segments, adjacency, length):
 def reweight_by_time(segments, adjacency):
     # A perfect overlap is granted a score of 1. Total disparity (opposite ends of track) is a score of 0.
     num_segments = segments.shape[0]
-    last_seg = segments[num_segments - 1]
+    last_seg = segments[num_segments - 1] - segments[0]
+    if last_seg <= 0:
+        return adjacency
     dist_matrix = np.zeros(adjacency.shape)
     for i in range(num_segments):
         cur_seg = segments[i]

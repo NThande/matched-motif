@@ -31,10 +31,16 @@ def merge_motifs(starts, ends, labels):
             # Case 2: Adjacent segments have different cluster groups
             # End the current motif merge and start a new one
             else:
+                # Look ahead to the next segment to avoid going too far
+                # if i + 1 < num_motifs and cur_end < starts[i + 1]:
+                #     merge_end.append(cur_end)
+                # else:
+                # cur_end = starts[i]
+                merge_end.append(cur_end)
                 merge_start.append(cur_start)
-                merge_end.append(starts[i])
                 merge_labels.append(cur_label)
-                cur_start = starts[i]
+                cur_start = cur_end
+                # cur_start = starts[i]
                 cur_end = ends[i]
                 cur_label = labels[i]
         # Case 3: Adjacent segments are disjoint
@@ -46,6 +52,8 @@ def merge_motifs(starts, ends, labels):
             cur_end = ends[i]
             cur_label = labels[i]
 
+
+    # Add the final segment
     merge_start.append(cur_start)
     merge_end.append(cur_end)
     merge_labels.append(cur_label)

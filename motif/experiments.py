@@ -63,27 +63,41 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
     metric_dict = results_to_metrics(results, methods, ref_motifs)
 
     # Output Plots
+    if exp_name == 'K-Means':
+        lp = 'k='
+    else:
+        lp = ''
     if 'bar' in show_plot:
-        if exp_name == 'K-Means':
-            lp = 'k='
-        else:
-            lp = ''
-        fig, ax = explots.draw_results_rpf(methods, metric_dict, label_prefix=lp)
+        fig = vis.get_fig()
+        ax = fig.add_subplot(1, 1, 1)
+        ax = explots.draw_results_rpf(methods, metric_dict, label_prefix=lp, ax=ax)
         fig.suptitle('{exp_name} Comparison for {audio_name}'.format(exp_name=exp_name,
                                                                      audio_name=audio_name))
+        vis.save_fig(fig, './bin/graphs/', 'RPF_{}_{}'.format(audio_name, exp_name))
 
-        fig = explots.draw_results_bed(methods, metric_dict, audio_name, exp_name)
+        fig = vis.get_fig()
+        explots.draw_results_bed(methods, metric_dict, audio_name, exp_name, fig=fig)
         fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
                      fontsize=24)
+        if exp_name == 'K-Means':
+            ax = fig.get_axes()[0]
+            ax.set_xlabel('Number of clusters')
+            ax = fig.get_axes()[1]
+            ax.set_xlabel('Number of clusters')
         vis.save_fig(fig, './bin/graphs/', 'BED_{}_{}'.format(audio_name, exp_name))
 
     if 'group' in show_plot:
         label_key = 'Ideal'
         methods_grp = (label_key,) + methods
         results[label_key] = ref_motifs
-        fig = visualizations.draw_motif_group(audio, fs, results, methods_grp, title='', subplots=(2, 2))
+        fig = visualizations.draw_motif_group(audio, fs, results, methods_grp, title='', subplots=(2, 2),
+                                              label_prefix=lp)
         fig.suptitle('{exp_name} Motifs on {audio_name}'.format(exp_name=exp_name, audio_name=audio_name))
         vis.save_fig(fig, './bin/graphs/', 'GRP_{}_{}'.format(audio_name, exp_name))
+
+        if exp_name == 'K-Means':
+            ax = fig.get_axes()[1]
+            ax.set_title(label_key, fontsize=18)
 
     if write_motifs:
         exputils.write_results(audio, fs, audio_name, out_dir, methods, results)
@@ -112,12 +126,12 @@ def results_to_metrics(results, methods, ref_motifs):
 
 # The experiments run to generate our output data
 def main():
-    name = 't1'
+    name = 't1.2'
     in_dir = "./bin/test"
     out_dir = "./bin/results"
     segmentation_experiment(name, in_dir, out_dir, show_plot=('bar', 'group'), write_motifs=False)
-    # k_means_experiment(name, in_dir, out_dir, show_plot=('matrix', 'motif'), write_motifs=False)
-    # similarity_experiment(name, in_dir, out_dir, show_plot=(), write_motifs=False)
+    # k_means_experiment(name, in_dir, out_dir, show_plot=('bar', 'group',), write_motifs=False)
+    # similarity_experiment(name, in_dir, out_dir, show_plot=('bar','group'), write_motifs=False)
     # clustering_experiment(name, in_dir, out_dir, show_plot=('arc',), write_motifs=False)
     vis.show()
     return

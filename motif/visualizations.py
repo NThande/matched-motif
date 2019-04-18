@@ -7,6 +7,7 @@ import fileutils
 import graphutils as graph
 import match_filter
 import motifutils as motif
+import shazam
 import visutils as vis
 
 
@@ -31,16 +32,17 @@ def draw_segmentation_evolution(audio, fs):
     step = (2, 5, 3)
     s_idx = 0
     f_idx = 2
+    length = 3
     for m in methods:
         thumb, similarity, segments, sim_matrix = match_filter.thumbnail(audio, fs,
                                                                          seg_method=m,
-                                                                         length=2)
+                                                                         length=length)
 
         ax = fig.add_subplot(2, 2, f_idx)
         ax.set_ylabel('Window #', fontsize=14)
-        ax = vis.plot_window_overlap(segments, np.ones(segments.shape) * 2, audio_len,
+        ax = vis.plot_window_overlap(segments, np.ones(segments.shape) * length, audio_len,
                                      tick_step=step[s_idx], ax=ax)
-        ax.set_title('Regular', fontsize=14)
+        ax.set_title(m, fontsize=14)
         ax.grid()
         s_idx += 1
         f_idx += 1
@@ -64,7 +66,7 @@ def draw_matrix_evolution(audio, fs, length, name='audio'):
     adjacency_list.append(adjacency_reweight)
     title_list.append('Time Weight Added')
 
-    adjacency_thresh = analyzer.topk_threshold(np.copy(adjacency_no_overlap), 3)
+    adjacency_thresh = analyzer.topk_threshold(np.copy(adjacency_no_overlap), cfg.K_THRESH)
     adjacency_list.append(adjacency_thresh)
     title_list.append('With Threshold')
 
@@ -130,7 +132,7 @@ def draw_matrix_arc_chord_demo(G, name, with_chord=False):
     return fig
 
 
-def draw_motif_group(audio, fs, results, methods, title, subplots=(2, 2)):
+def draw_motif_group(audio, fs, results, methods, title, subplots=(2, 2), label_prefix = ''):
     fig = vis.get_fig()
     fig.suptitle(title)
     plots_per_row = subplots[0]
@@ -148,7 +150,7 @@ def draw_motif_group(audio, fs, results, methods, title, subplots=(2, 2)):
         vis.plot_audio_waveform(audio, fs, ax=ax)
         labels = labels.astype(int)
         vis.add_motif_labels(ax, starts, ends, labels, alpha=0.5)
-        ax.set_title(str(m), fontsize=14)
+        ax.set_title(label_prefix + str(m), fontsize=14)
         ax.set_xlabel('')
         ax.set_ylabel('')
         f_idx += 1
@@ -157,7 +159,7 @@ def draw_motif_group(audio, fs, results, methods, title, subplots=(2, 2)):
     return fig
 
 
-def draw_simple_arc(G, with_labels=True, with_color=True, ax=None):
+def draw_simple_arc(G, with_labels=True, with_color=True, ax=None, node_size=50.):
     if ax is None:
         fig = vis.get_fig()
         ax = draw_super_axis(fig)
@@ -176,6 +178,7 @@ def draw_simple_arc(G, with_labels=True, with_color=True, ax=None):
         group_color = 'w'
 
     ax = vis.plot_arcgraph(G,
+                           node_size=node_size,
                            node_order=range(0, num_nodes),
                            node_labels=arc_labels,
                            node_color=group_color,
@@ -194,44 +197,46 @@ def draw_super_axis(fig):
 
 
 def main():
-    name = 't1'
-    in_dir = './bin/'
-    audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-    length = cfg.SEGMENT_LENGTH
-
-    fig = draw_segmentation_evolution(audio, fs)
-    vis.save_fig(fig, './bin/graphs/', 'SEG_{audio_name}'.format(audio_name=name))
-
-    thresh = 0.95
-    starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, threshold=thresh)
-
-    fig = vis.get_fig()
-    fig.suptitle('Arc Graph Clustering')
-    ax = draw_super_axis(fig)
-    ax = draw_simple_arc(G, with_labels=True, with_color=True, ax=ax)
-    vis.save_fig(fig, './bin/graphs/', 'ARC_{audio_name}_clustered'.format(audio_name=name))
-
-    fig = draw_matrix_arc_chord_demo(G, name, with_chord=False)
-    vis.save_fig(fig, './bin/graphs/', 'SSM2ARC_{audio_name}'.format(audio_name=name))
-
-    name = 't3'
-    in_dir = './bin/test'
-    audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-
-    fig = draw_matrix_evolution(audio, fs, length, name)
-    vis.save_fig(fig, './bin/graphs/', 'SSM_{audio_name}'.format(audio_name=name))
+    # name = 'Repeat'
+    # in_dir = './bin/test'
+    # audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    # length = cfg.SEGMENT_LENGTH
+    #
+    # fig = draw_segmentation_evolution(audio, fs)
+    # vis.save_fig(fig, './bin/graphs/', 'SEG_{audio_name}'.format(audio_name=name))
+    #
+    # thresh = 0.95
+    # starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, threshold=thresh)
+    #
+    # fig = vis.get_fig()
+    # fig.suptitle('Arc Graph Clustering')
+    # ax = draw_super_axis(fig)
+    # ax = draw_simple_arc(G, with_labels=True, with_color=True, ax=ax)
+    # vis.save_fig(fig, './bin/graphs/', 'ARC_{audio_name}_clustered'.format(audio_name=name))
+    #
+    # fig = draw_matrix_arc_chord_demo(G, name, with_chord=False)
+    # vis.save_fig(fig, './bin/graphs/', 'SSM2ARC_{audio_name}'.format(audio_name=name))
+    #
+    # name = 't3'
+    # in_dir = './bin/test'
+    # audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    #
+    # fig = draw_matrix_evolution(audio, fs, length, name)
+    # vis.save_fig(fig, './bin/graphs/', 'SSM_{audio_name}'.format(audio_name=name))
 
     results = {}
     methods = ('With Clustering', 'With Join')
-    name = 't1'
+
+    name = 'Repeat'
     in_dir = "./bin/test"
     audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
     audio_labels = fileutils.load_labels(name, label_dir=in_dir)
     ref_starts, ref_ends, ref_labels = motif.df_to_motif(audio_labels)
+    length = cfg.SEGMENT_LENGTH
 
     starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=False)
     this_result = motif.pack_motif(starts, ends, labels)
-    results['With Clustering'] = this_result
+    results['With Merging'] = this_result
 
     starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=True)
     this_result = motif.pack_motif(starts, ends, labels)
@@ -239,6 +244,25 @@ def main():
 
     fig = draw_motif_group(audio, fs, results, methods=methods, title='Joining Motif Segments', subplots=(2, 1))
     vis.save_fig(fig, './bin/graphs/', 'MOTIF_{audio_name}'.format(audio_name=name))
+
+    # name = 't1'
+    # in_dir = "./bin/"
+    # audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    # pairs_hash, pairs, peaks = shazam.fingerprint(audio)
+    #
+    # sxx = shazam.stft(audio,
+    #                   n_fft=cfg.WINDOW_SIZE,
+    #                   win_length=cfg.WINDOW_SIZE,
+    #                   hop_length=int(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO),
+    #                   window='hann')
+    # sxx = np.abs(sxx)
+    #
+    # fig = vis.get_fig()
+    # ax = fig.add_subplot(1, 1, 1)
+    # ax = vis.plot_stft_with_pairs(sxx, peaks, pairs, ax=ax)
+    # fig.suptitle('Spectrogram With Peaks and Pairs')
+    #
+    # vis.save_fig(fig, './bin/graphs/', 'SHAZAM_{audio_name}'.format(audio_name=name))
 
     vis.show()
 
