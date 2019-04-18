@@ -185,11 +185,13 @@ def draw_results_bed(methods, metric_dict, audio_name, exp_name, fig):
 
     ax = fig.add_subplot(1, 2, 2)
     ax = draw_results_single(methods, metric_dict, 0, ax=ax)
+    bot, top = ax.get_ylim()
+    ax.set_ylim(0, top)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_title('Edit Distance', fontsize=18)
     ax.set_xlabel('Method', fontsize=16)
     ax.set_ylabel('Edit Distance (Smaller is Better)', fontsize=16)
-    ax.set_ylim(0, 30)
+    # ax.set_ylim(0, 40)
 
     fig.subplots_adjust(wspace=0.5, top=0.85)
     return

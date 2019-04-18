@@ -143,22 +143,22 @@ def main():
     in_dir = './bin/test'
     out_dir = './bin/results'
     audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-    # audio_labels = fileutils.load_labels(name, label_dir=in_dir)
+    audio_labels = fileutils.load_labels(name, label_dir=in_dir)
     # Should be sensitive to the length of the track, as well as k
     # Perhaps length should be extended as song goes longer than 30 seconds;
     # 3 second = 30 seconds, 18 seconds = 3 min
     # length = tune_length_with_audio(audio, fs)
     length = cfg.SEGMENT_LENGTH
 
-    # explots.draw_reference(audio, fs, audio_labels, name=name,
-    #                show_plot=('motif',))
+    explots.draw_results_reference(audio, fs, audio_labels, name=name,
+                   show_plot=('motif',))
     # segmentation_analysis(audio, fs, length, num_motifs=3, name=name,
     #                         show_plot=('arc',))
     # k_means_analysis(audio, fs, length, name=name, k_clusters=(5, 25, 50),
     #                  show_plot=('motif',))
-    thresh = 0
-    results, G_set = threshold_analysis(audio, fs, length, name=name,
-                                        show_plot=('motif', 'matrix'), threshold=thresh)
+    # thresh = 0
+    # results, G_set = threshold_analysis(audio, fs, length, name=name,
+    #                                     show_plot=('motif', 'matrix'), threshold=thresh)
     visutils.show()
     return
 

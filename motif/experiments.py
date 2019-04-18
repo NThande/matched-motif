@@ -71,13 +71,13 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
         fig = vis.get_fig()
         ax = fig.add_subplot(1, 1, 1)
         ax = explots.draw_results_rpf(methods, metric_dict, label_prefix=lp, ax=ax)
-        fig.suptitle('{exp_name} Comparison for {audio_name}'.format(exp_name=exp_name,
+        fig.suptitle('{exp_name} Performance for {audio_name}'.format(exp_name=exp_name,
                                                                      audio_name=audio_name))
         vis.save_fig(fig, './bin/graphs/', 'RPF_{}_{}'.format(audio_name, exp_name))
 
         fig = vis.get_fig()
         explots.draw_results_bed(methods, metric_dict, audio_name, exp_name, fig=fig)
-        fig.suptitle("{exp_name} Experiment on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
+        fig.suptitle("{exp_name} Accuracy on {audio_name}".format(exp_name=exp_name, audio_name=audio_name),
                      fontsize=24)
         if exp_name == 'K-Means':
             ax = fig.get_axes()[0]
@@ -126,12 +126,12 @@ def results_to_metrics(results, methods, ref_motifs):
 
 # The experiments run to generate our output data
 def main():
-    name = 't1.2'
+    name = 'Avril'
     in_dir = "./bin/test"
     out_dir = "./bin/results"
-    segmentation_experiment(name, in_dir, out_dir, show_plot=('bar', 'group'), write_motifs=False)
+    # segmentation_experiment(name, in_dir, out_dir, show_plot=('bar', 'group'), write_motifs=False)
     # k_means_experiment(name, in_dir, out_dir, show_plot=('bar', 'group',), write_motifs=False)
-    # similarity_experiment(name, in_dir, out_dir, show_plot=('bar','group'), write_motifs=False)
+    similarity_experiment(name, in_dir, out_dir, show_plot=('bar','group'), write_motifs=False)
     # clustering_experiment(name, in_dir, out_dir, show_plot=('arc',), write_motifs=False)
     vis.show()
     return

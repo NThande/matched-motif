@@ -227,23 +227,31 @@ def main():
     results = {}
     methods = ('With Clustering', 'With Join')
 
-    name = 'Repeat'
+    name = 'Avril'
     in_dir = "./bin/test"
     audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-    audio_labels = fileutils.load_labels(name, label_dir=in_dir)
-    ref_starts, ref_ends, ref_labels = motif.df_to_motif(audio_labels)
     length = cfg.SEGMENT_LENGTH
 
-    starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=False)
-    this_result = motif.pack_motif(starts, ends, labels)
-    results['With Merging'] = this_result
+    audio_labels = fileutils.load_labels(name, label_dir=in_dir)
+    ref_starts, ref_ends, ref_labels = motif.df_to_motif(audio_labels)
+    fig = vis.get_fig()
+    ax = fig.add_subplot(1, 1, 1)
+    ax = vis.plot_motif_segmentation(audio, fs, ref_starts, ref_ends, ref_labels, ax=ax)
+    fig.suptitle('Hand-Labelled Description of {}'.format(name))
+    vis.save_fig(fig, './bin/graphs/', 'IDEAL_{audio_name}'.format(audio_name=name))
 
-    starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=True)
-    this_result = motif.pack_motif(starts, ends, labels)
-    results['With Join'] = this_result
 
-    fig = draw_motif_group(audio, fs, results, methods=methods, title='Joining Motif Segments', subplots=(2, 1))
-    vis.save_fig(fig, './bin/graphs/', 'MOTIF_{audio_name}'.format(audio_name=name))
+    # starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=False)
+    # this_result = motif.pack_motif(starts, ends, labels)
+    # results['With Merging'] = this_result
+    #
+    # starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=True)
+    # this_result = motif.pack_motif(starts, ends, labels)
+    # results['With Join'] = this_result
+    #
+    # fig = draw_motif_group(audio, fs, results, methods=methods, title='Joining Motif Segments', subplots=(2, 1))
+    # vis.save_fig(fig, './bin/graphs/', 'MOTIF_{audio_name}'.format(audio_name=name))
+
 
     # name = 't1'
     # in_dir = "./bin/"
