@@ -11,7 +11,6 @@ import graphutils as graph
 import motifutils as motif
 
 mpl.style.use('seaborn-white')
-# print(mpl.rcParams.keys())
 mpl.rcParams.update({'font.size': 16,
                      'axes.titlesize': 22,
                      'axes.labelsize': 20,
@@ -20,20 +19,19 @@ mpl.rcParams.update({'font.size': 16,
 plt.rcParams['image.cmap'] = 'plasma'
 
 
-# ax = plt.figure().gca()
-# fig = plt.gcf()
-# ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
+# Gives you a figure handle
 def get_fig():
     fig = plt.figure()
     fig.set_size_inches(8.0, 5.5)
     return fig
 
 
-def save_fig(fig, out_dir, name):
-    fig.savefig(out_dir + name + ".png", dpi=150)
+# Saves the figure handle fig to directory out_dir with the given name and dpi
+def save_fig(fig, out_dir, name, dpi=150):
+    fig.savefig(out_dir + name + ".png", dpi=dpi)
 
 
+# Gets you an axes handle from a new figure, if one does not already exist.
 def get_axes(ax):
     if ax is None:
         fig = get_fig()
@@ -52,14 +50,14 @@ def plot_similarity_curve(seg_similarity, segment_times, labels=None, ax=None, c
     return ax
 
 
-# Add hand-labeled motifs to a similarity plot for a mf thumbnail
+# Add hand-labeled motifs to a similarity plot for a matched filter thumbnail
 def add_motif_labels_with_df(ax, labels_df, alpha=0.2):
     starts, ends, labels = motif.df_to_motif(labels_df)
     ax = add_motif_labels(ax, starts, ends, labels, alpha=alpha)
     return ax
 
 
-# Add hand-labeled motifs to a similarity plot for a mf thumbnail
+# Add translucent colored boxes to represent motifs to a plot. ax x-axis must be in seconds for this to work properly.
 def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
     ax.set_xlim(ax.get_xlim()[0] - 1, ax.get_xlim()[1] + 1)
     unique_motifs = {}
@@ -76,7 +74,7 @@ def add_motif_labels(ax, starts, ends, labels, alpha=0.8):
     return ax
 
 
-# Plot the input similarity matrix using matplotlib
+# Plot a self-similarity matrix on its own plot
 def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     ax = get_axes(ax)
     ax, image = plot_matrix(similarity_matrix, ax)
@@ -90,6 +88,7 @@ def plot_similarity_matrix(similarity_matrix, tick_step=3, ax=None):
     return ax
 
 
+# Plot a generic matrix on the given axis, with matrix indices increasing from bottom left to top right corner
 def plot_matrix(matrix, ax=None):
     ax = get_axes(ax)
     image = ax.imshow(matrix)
@@ -115,11 +114,10 @@ def plot_window_overlap(segments, seg_lengths, audio_len, tick_step=1, ax=None):
         line_start = segments[i]
         line_end = segments[i] + seg_lengths[i]
         ax.axhspan(i, i+1, line_start / max_seg, line_end / max_seg, linewidth=2, edgecolor='k', facecolor='w')
-        # ax.plot([line_start, line_end], [i, i], 'rx')
     return ax
 
 
-# Plot the input short-term Fourier Transform
+# Plot the input matrix sxx as a Fourier spectrogram. Doesn't work if it's not a Foureier spectrogram.
 def plot_stft(sxx, fs=cfg.FS, ax=None, frames=False,
               hop_length=(cfg.WINDOW_SIZE * cfg.OVERLAP_RATIO)):
     ax = get_axes(ax)
@@ -135,7 +133,7 @@ def plot_stft(sxx, fs=cfg.FS, ax=None, frames=False,
     return ax
 
 
-# Plot Spectrogram peaks
+# Plot peak coordinates as points on the given ax.
 def plot_peaks(peaks, ax=None, color='rx'):
     if peaks is None:
         return
@@ -148,7 +146,7 @@ def plot_peaks(peaks, ax=None, color='rx'):
     return ax
 
 
-# Plot spectrogram peaks and one pair from every inc pairs
+# Plot all spectrogram peaks on the given ax. Then, plot 1/inc peak pairs as lines between peaks.
 def plot_pairs(peaks, pairs, inc=50, ax=None,
                line_color='b-',
                peak_color='rx',
@@ -178,7 +176,7 @@ def plot_pairs(peaks, pairs, inc=50, ax=None,
     return ax
 
 
-# Plot everything on the same plot
+# Plot the spectrogram overlaid with peak locations and pairs.
 def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
                          line_color='w-',
                          peak_color='yx',
@@ -194,7 +192,7 @@ def plot_stft_with_pairs(sxx, peaks, pairs, inc=50, ax=None,
     return ax
 
 
-# Plot an audio segmentation on top of the audio waveform
+# Plot the waveform of the audio and the motif segments on the same plot.
 def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.5):
     ax = get_axes(ax)
     plot_audio_waveform(audio, fs, ax)
@@ -206,6 +204,7 @@ def plot_motif_segmentation(audio, fs, starts, ends, labels, ax=None, alpha=0.5)
     return ax
 
 
+# Plot an audio waveform. Doesn't work if it's not an audio waveform.
 def plot_audio_waveform(audio, fs, ax=None):
     ax = get_axes(ax)
     librosa.display.waveplot(audio, fs, ax=ax, color='gray')
@@ -214,6 +213,8 @@ def plot_audio_waveform(audio, fs, ax=None):
     return ax
 
 
+# Plots a bar graph on the given axis with the given parameters.
+# metric_labels are the x-tick labels, group_label is the legend label for this plot.
 def plot_metric_bar(x_pos, values, ax=None,
                     metric_labels=None, color='b', group_label=None, width=0.8):
     ax = get_axes(ax)
@@ -229,14 +230,16 @@ def plot_metric_bar(x_pos, values, ax=None,
     return ax
 
 
-# Plot the similarity used to calculate a thumbnail.
-def plot_metric_curve(x_pos, values, metric_label=None, ax=None, color='rx-'):
+# Plots a generic curve; group_label is the legend label.
+def plot_metric_curve(x_pos, values, group_label=None, ax=None, color='rx-'):
     ax = get_axes(ax)
-    ax.plot(x_pos, values, color, label=metric_label)
+    ax.plot(x_pos, values, color, label=group_label)
     return ax
 
 
-# Draw Chord diagram of graph g
+# Draw a chord diagram of the graph G. Handy way to visualize some self-similarity matrices.
+# node_data is the dataframe for the node labels; label_col is the column of the node_data used for node labels.
+# node_data should be made with the graphutils function to_node_dataframe().
 def plot_chordgraph(G,
                     node_data=None,
                     label_col='index',
@@ -290,7 +293,8 @@ def plot_chordgraph(G,
     return c
 
 
-# Draw a simple circular node graph of g
+# Draw a simple circular node graph of g. Edges are straight lines with no weight information.
+# Not as useful as graph g, but it is easier to make.
 def plot_netgraph(g, ax=None, **kwargs):
     ax = get_axes(ax)
     node_layout = kwargs.setdefault('node_layout', nx.circular_layout(g))
@@ -301,7 +305,9 @@ def plot_netgraph(g, ax=None, **kwargs):
     return ax
 
 
-# Draw arc diagram of graph g
+# Draw arc diagram of graph g. Very handy for visualizing where motifs are in time.
+# weight_attr is the edge attribute of graph g that has the edge weight information.
+# node_labels should be made with the to_node_dict() function in graphutils.
 def plot_arcgraph(g, ax=None,
                   weight_attr='value',
                   node_order=None,
@@ -343,7 +349,7 @@ def plot_arcgraph(g, ax=None,
     return ax
 
 
-# Show a specific chord plot or all the matplotlib plots
+# Show a specific chord plot or all the matplotlib plots. Blocks other processes, so stick it at the end of a process.
 def show(chord=None):
     if chord is not None:
         bkplt.show(chord)

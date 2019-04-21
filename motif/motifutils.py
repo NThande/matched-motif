@@ -1,7 +1,7 @@
+# Functions for grouping motifs after clustering.
+
 import numpy as np
 import pandas as pd
-from suffix_trees import STree
-from collections import defaultdict
 
 import config as cfg
 import segmentation as seg
@@ -25,22 +25,16 @@ def merge_motifs(starts, ends, labels):
     for i in range(num_motifs):
         if cur_end > starts[i]:
             # Case 1: Adjacent segments have the same cluster group
-            # Shift merge end forward
+                # Shift merge end forward
             if cur_label == labels[i]:
                 cur_end = ends[i]
             # Case 2: Adjacent segments have different cluster groups
-            # End the current motif merge and start a new one
+                # End the current motif merge and start a new one
             else:
-                # Look ahead to the next segment to avoid going too far
-                # if i + 1 < num_motifs and cur_end < starts[i + 1]:
-                #     merge_end.append(cur_end)
-                # else:
-                # cur_end = starts[i]
                 merge_end.append(cur_end)
                 merge_start.append(cur_start)
                 merge_labels.append(cur_label)
                 cur_start = cur_end
-                # cur_start = starts[i]
                 cur_end = ends[i]
                 cur_label = labels[i]
         # Case 3: Adjacent segments are disjoint
@@ -51,7 +45,6 @@ def merge_motifs(starts, ends, labels):
             cur_start = starts[i]
             cur_end = ends[i]
             cur_label = labels[i]
-
 
     # Add the final segment
     merge_start.append(cur_start)
@@ -157,10 +150,11 @@ def motif_join(starts, ends, motif_labels):
     return restarts, re_ends, relabels
 
 
-# Dynamic programming method borrowed from https://www.geeksforgeeks.org/longest-repeating-and-non-overlapping
-# -substring/ Returns the longest repeating non-overlapping substring in str
-def longest_repeated_substring(str):
-    n = len(str)
+# Dynamic programming method borrowed from
+# https://www.geeksforgeeks.org/longest-repeating-and-non-overlapping-substring/
+# Returns the longest repeating non-overlapping substring in labels_str
+def longest_repeated_substring(labels_str):
+    n = len(labels_str)
     LCSRe = [[0 for x in range(n + 1)]
              for y in range(n + 1)]
 
@@ -174,14 +168,14 @@ def longest_repeated_substring(str):
 
             # (j-i) > LCSRe[i-1][j-1] to remove
             # overlapping
-            if (str[i - 1] == str[j - 1] and
+            if (labels_str[i - 1] == labels_str[j - 1] and
                     LCSRe[i - 1][j - 1] < (j - i)):
                 LCSRe[i][j] = LCSRe[i - 1][j - 1] + 1
 
                 # updating maximum length of the
                 # substring and updating the finishing
                 # index of the suffix
-                if (LCSRe[i][j] > res_length):
+                if LCSRe[i][j] > res_length:
                     res_length = LCSRe[i][j]
                     index = max(i, index)
 
@@ -191,10 +185,10 @@ def longest_repeated_substring(str):
     # If we have non-empty result, then insert
     # all characters from first character to
     # last character of string
-    if (res_length > 0):
+    if res_length > 0:
         for i in range(index - res_length + 1,
                        index + 1):
-            res = res + str[i - 1]
+            res = res + labels_str[i - 1]
 
     return res
 
@@ -255,6 +249,7 @@ def pack_motif(starts, ends, motif_labels):
     return np.array((starts, ends, motif_labels))
 
 
+# Breaks up a single array made by pack_motif() into starts, ends, and labels.
 def unpack_motif(motifs):
     return motifs[START_IDX], motifs[END_IDX], motifs[LABEL_IDX]
 
@@ -270,8 +265,6 @@ def main():
     restarts, reends, relabels = motif_join(starts, ends, labels)
     print(restarts)
     print(reends)
-    simple_str = 'I am I am '
-    complex_str = 'I am I am I'
     return
 
 

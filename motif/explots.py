@@ -7,6 +7,7 @@ import motifutils as motif
 import visutils as vis
 
 
+# Creates a graph from a labels dataframe, then plots the same figures as with a regular results set.
 def draw_results_reference(audio, fs, labels_df, name='audio', show_plot=None, title_hook='hand-labelled'):
     G = graph.from_pandas_labels(labels_df)
     Gp, _ = graph.prune_graph(G)
@@ -48,6 +49,7 @@ def draw_results(audio, fs, results, show_plot,
     return
 
 
+# Draw any figures that are derived from a graph.
 def draw_results_as_network(G, name, title_hook, show_plot, num_groups=None, draw_ref=False):
     if show_plot is None:
         return
@@ -67,6 +69,7 @@ def draw_results_as_network(G, name, title_hook, show_plot, num_groups=None, dra
         draw_results_matrix(G, name, title_hook=title_hook)
 
 
+# Automatic method to draw a chord graph for a graph G.
 def draw_results_chord(G, name, title_hook, draw_ref=False):
     chord_labels = graph.to_node_dataframe(G)
     c = vis.plot_chordgraph(G,
@@ -85,6 +88,7 @@ def draw_results_chord(G, name, title_hook, draw_ref=False):
         vis.show(c)
 
 
+# Automatic method to draw an arc graph for a graph G.
 def draw_results_arc(G, name, title_hook, num_groups=None, draw_ref=False, ax=None, with_labels=True):
     # Define group color for arc graph
     if with_labels:
@@ -118,6 +122,7 @@ def draw_results_arc(G, name, title_hook, num_groups=None, draw_ref=False, ax=No
         ax.set_title('Arc Graph for {}'.format(name))
 
 
+# Automatic method to draw a self-similarity matrix for a graph G.
 def draw_results_matrix(G, name, title_hook, ax=None):
     adjacency = graph.graph_to_adjacency_matrix(G)
     ax = vis.plot_similarity_matrix(adjacency, ax)
@@ -125,11 +130,13 @@ def draw_results_matrix(G, name, title_hook, ax=None):
     return ax
 
 
+# Draw the audio waveform with the motif segmentation for a set of results.
 def draw_results_motif(audio, fs, starts, ends, labels, name='audio', title_hook='', ax=None):
     ax = vis.plot_motif_segmentation(audio, fs, starts, ends, labels, ax=ax)
     ax.set_title("Motif Segmentation for {} {}".format(name, title_hook), pad=20)
 
 
+# Draw the recall-precision-f-measure bar graph
 def draw_results_rpf(methods, metric_dict, ax=None, label_prefix=''):
     ax = vis.get_axes(ax)
     num_methods = len(methods)
@@ -158,6 +165,7 @@ def draw_results_rpf(methods, metric_dict, ax=None, label_prefix=''):
     return ax
 
 
+# Draw a single bar graph on the given axes. Configured for draw_results_bed.
 def draw_results_single(methods, metric_dict, idx, ax=None):
     ax = vis.get_axes(ax)
     num_methods = len(methods)
@@ -175,6 +183,7 @@ def draw_results_single(methods, metric_dict, idx, ax=None):
     return ax
 
 
+# Draw boundary-measure and edit-distance bar plot.
 def draw_results_bed(methods, metric_dict, audio_name, exp_name, fig):
     ax = fig.add_subplot(1, 2, 1)
     ax = draw_results_single(methods, metric_dict, 4, ax=ax)

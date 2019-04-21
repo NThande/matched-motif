@@ -2,12 +2,12 @@ import editdistance # From https://github.com/aflc/editdistance
 import numpy as np
 import config as cfg
 
+# This module assumes that segments are fed in as a 3 x N array of N segment starts, ends, and labels.
 START_IDX = cfg.START_IDX
 END_IDX = cfg.END_IDX
 LABEL_IDX = cfg.LABEL_IDX
 
 
-# For simplicity, this algorithm assumes that segments is a 3 x N array of N segment starts, ends, and labels.
 # Borrowed from Chai and Vercoe.
 # Returns a metric reflecting the distance between the nearest neighbors in observed_segments and reference_segments.
 def boundary_distance(obs_motifs, ref_motifs):

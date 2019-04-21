@@ -1,3 +1,5 @@
+# Functions for audio segmentation.
+
 import librosa as lb
 import numpy as np
 
@@ -37,6 +39,7 @@ def segment_onset(audio, fs,
                   method='onset',
                   prune=False,
                   fill_space=False):
+    # Onset and beat segmentation differ only in how they are acquired
     if method == 'onset':
         onsets = lb.onset.onset_detect(audio, fs, hop_length=cfg.WINDOW_SIZE, units='time', backtrack=True)
     elif method == 'beat':

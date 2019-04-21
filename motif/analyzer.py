@@ -1,5 +1,6 @@
-import numpy as np
+# Main function for finding musical motifs. Also includes matrix manipulation functions.
 
+import numpy as np
 import cluster
 import config as cfg
 import graphutils as graph
@@ -8,11 +9,14 @@ import match_filter
 import landmark_filter
 import motifutils as motif
 
+# Default values
 NODE_LABEL = cfg.NODE_LABEL
 CLUSTER_NAME = cfg.CLUSTER_NAME
 CLUSTER_EDGE_NAME = cfg.CLUSTER_EDGE_NAME
 
 
+# The main function for this project.
+# Returns the structural description of the audio as a set of segment starts, ends, and their labels.
 def analyze(audio, fs,
             k_clusters=cfg.N_ClUSTERS,
             seg_length=cfg.SEGMENT_LENGTH,
@@ -31,7 +35,7 @@ def analyze(audio, fs,
                                                 method=similarity_method,
                                                 length=seg_length,
                                                 seg_method=seg_method)
-    print("Done Self-Similarity")
+    print("Done Self-Similarity Calculation")
 
     # Avoid overlap effects for any window
     if with_overlap is False:
@@ -39,7 +43,7 @@ def analyze(audio, fs,
 
     # Add additional weights for segments that are close together in time
     if with_reweight:
-        adjacency = reweight_by_time(segments, adjacency)
+        adjacency = add_time_distance(segments, adjacency)
 
     # Create labels for nodes
     time_labels = seg.seg_to_label(segments, segments + seg_length)
@@ -47,10 +51,11 @@ def analyze(audio, fs,
     # Adjacency matrix thresholding
     if with_topk:
         adjacency = topk_threshold(adjacency, threshold)
-        # adjacency = seg.row_normalize(segments, adjacency)
     else:
         adjacency[adjacency < threshold] = 0
     adjacency = seg.row_normalize(segments, adjacency)
+
+    print("Done Self-Similarity Matrix Post-Processing")
 
     # Incidence matrix clustering
     G = None
@@ -66,8 +71,10 @@ def analyze(audio, fs,
     else:
         # Create incidence matrix and cluster directly
         M, _ = graph.adjacency_to_incidence_matrix(adjacency, prune=False)
-        M, relabel_idx = graph.prune_incidence(M)
+        M, relabel_idx = graph.prune_incidence_matrix(M)
         motif_labels = cluster.cluster(incidence=M, k_clusters=k_clusters, method=cluster_method)
+
+    print("Done Clustering")
 
     # Update segment list to account for pruned nodes
     seg_starts = segments[relabel_idx]
@@ -75,7 +82,6 @@ def analyze(audio, fs,
 
     # Merge motifs and rebuild text labels
     seg_starts, seg_ends, motif_labels = motif.merge_motifs(seg_starts, seg_ends, motif_labels)
-    # print(motif.pack_motif(seg_starts, seg_ends, motif_labels).T)
     motif_labels = motif.sequence_labels(motif_labels)
 
     if with_join:
@@ -103,11 +109,8 @@ def self_similarity(audio, fs, length, method, seg_method):
         print("Unrecognized similarity method: {}".format(method))
 
 
-# Performs a hard threshold on an adjacency matrix with different methods
+# Performs a top-k threshold on each row of adjacency, where k = threshold
 def topk_threshold(adjacency, threshold):
-    # Keep only the top k connections for each node
-    print("Pre-Threshold: {num_edges}, threshold = {thresh}".format(num_edges=np.count_nonzero(adjacency),
-                                                                    thresh=threshold))
     if threshold >= 1:
         num_nodes = adjacency.shape[0]
         k = int(threshold)
@@ -118,17 +121,8 @@ def topk_threshold(adjacency, threshold):
             kth_entry = row[np.argsort(row)[num_nodes - 1 - k - 1]]
             row[row < kth_entry] = 0
             adjacency[i, :] = row
-    # Only keep top proportion of nodes
-    elif threshold > 0:
-        adj_vals = adjacency.flatten()
-        adj_vals = np.sort(adj_vals[adj_vals.nonzero()])
-        adj_vals_idx = int(adj_vals.shape[0] * threshold)
-        thresh_val = adj_vals[adj_vals_idx]
-        adjacency[adjacency < thresh_val] = 0
     else:
         return adjacency
-    print("Post-Threshold: {num_edges}, threshold = {thresh}".format(num_edges=np.count_nonzero(adjacency),
-                                                                    thresh=threshold))
     return adjacency
 
 
@@ -151,8 +145,8 @@ def remove_overlap(segments, adjacency, length):
 
 
 # Add additional weighting to adjacent segments
-def reweight_by_time(segments, adjacency):
-    # A perfect overlap is granted a score of 1. Total disparity (opposite ends of track) is a score of 0.
+# A perfect overlap is granted a score of 1. Total disparity (opposite ends of track) is a score of 0.
+def add_time_distance(segments, adjacency):
     num_segments = segments.shape[0]
     last_seg = segments[num_segments - 1] - segments[0]
     if last_seg <= 0:
@@ -166,12 +160,10 @@ def reweight_by_time(segments, adjacency):
     # Adjust weights and re-normalize
     adjacency = (0.1 * dist_matrix) + adjacency
     adjacency = seg.row_normalize(segments, adjacency)
-
     return adjacency
 
 
 def main():
-    # Create synthetic audio sequence
     return
 
 

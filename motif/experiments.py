@@ -1,4 +1,3 @@
-
 import config as cfg
 import explots
 import exputils
@@ -9,26 +8,31 @@ import visutils as vis
 import visualizations
 
 
+# Runs the segmentation experiment on an audio file with the given name in bin/test.
 def segmentation_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
     methods = ('Regular', 'Onset', 'Beat')
     _experiment('Segmentation', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
+# Runs the similarity measure experiment on an audio file with the given name in bin/test.
 def similarity_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
     methods = ('Match', 'Shazam')
     _experiment('Similarity', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
+# Runs the k-means experiment on an audio file with the given name in bin/test.
 def k_means_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
     methods = (3, 5, 10)
     _experiment('K-Means', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
+# Runs the clustering experiment on an audio file with the given name in bin/test.
 def clustering_experiment(name, in_dir, out_dir, write_motifs=False, show_plot=()):
     methods = ('K-Means', 'Spectral', 'Agglom')
     _experiment('Clustering', name, in_dir, out_dir, methods, write_motifs, show_plot=show_plot)
 
 
+# Generic method for running an experiment. Runs analysis uses an experiment-specific configuration.
 def _experiment(exp_name, audio_name, in_dir, out_dir,
                 methods, write_motifs=False, show_plot=()):
     audio, fs = fileutils.load_audio(audio_name, audio_dir=in_dir)
@@ -67,6 +71,8 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
         lp = 'k='
     else:
         lp = ''
+
+    # Plot the recall, precision, f-measure, boundary measure, and edit distance as bar plots.
     if 'bar' in show_plot:
         fig = vis.get_fig()
         ax = fig.add_subplot(1, 1, 1)
@@ -86,6 +92,7 @@ def _experiment(exp_name, audio_name, in_dir, out_dir,
             ax.set_xlabel('Number of clusters')
         vis.save_fig(fig, './bin/graphs/', 'BED_{}_{}'.format(audio_name, exp_name))
 
+    # Plot the motif segmentations as subplots in a larger figure
     if 'group' in show_plot:
         label_key = 'Ideal'
         methods_grp = (label_key,) + methods
@@ -129,10 +136,10 @@ def main():
     name = 'Avril'
     in_dir = "./bin/test"
     out_dir = "./bin/results"
-    # segmentation_experiment(name, in_dir, out_dir, show_plot=('bar', 'group'), write_motifs=False)
-    # k_means_experiment(name, in_dir, out_dir, show_plot=('bar', 'group',), write_motifs=False)
-    similarity_experiment(name, in_dir, out_dir, show_plot=('bar','group'), write_motifs=False)
-    # clustering_experiment(name, in_dir, out_dir, show_plot=('arc',), write_motifs=False)
+    segmentation_experiment(name, in_dir, out_dir, show_plot=('group',), write_motifs=False)
+    k_means_experiment(name, in_dir, out_dir, show_plot=('group',), write_motifs=False)
+    similarity_experiment(name, in_dir, out_dir, show_plot=('group',), write_motifs=False)
+    clustering_experiment(name, in_dir, out_dir, show_plot=('group',), write_motifs=False)
     vis.show()
     return
 

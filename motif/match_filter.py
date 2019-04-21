@@ -1,6 +1,6 @@
-import librosa.display
-import numpy as np
+# Functions for matched-filter similarity
 
+import numpy as np
 import fileutils
 import segmentation as seg
 import visutils as vis
@@ -13,19 +13,15 @@ def matched_filter(ref, sig, segments):
     length = ref.shape[0]
     match_results = np.zeros(num_windows)
 
-    # Peak normalization
-    ref_n = ref / np.max(np.abs(ref), axis=0)
     for j in range(0, num_windows):
         cur_sig = sig[int(segments[j]): int(segments[j] + length)]
         cur_sig = cur_sig[0:length]
-        cur_sig_n = cur_sig / np.max(np.abs(cur_sig), axis=0)
-        # match_results[j] = np.dot(ref.T, cur_sig)
-        match_results[j] = np.dot(ref_n.T, cur_sig_n)
+        match_results[j] = np.dot(ref.T, cur_sig)
     return match_results
 
 
-# Using a series of windowed matched filters of length window_length (in seconds)
-# on sound with sampling frequency fs, identify the audio thumbnail
+# thumbnail() computes a rough thumbnail for the audio and creates a self_similarity matrix with
+# the matched filter method.
 def thumbnail(audio, fs, length, include_self=True, seg_method='regular'):
     # Segment the audio
     segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)

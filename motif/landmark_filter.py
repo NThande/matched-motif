@@ -1,3 +1,5 @@
+# Functions for Shazam similarity
+
 import numpy as np
 import fileutils
 import shazam
@@ -5,6 +7,7 @@ import segmentation as seg
 import visutils as vis
 
 
+# thumbnail() computes a rough thumbnail for the audio and creates a self_similarity matrix with the shazam method.
 def thumbnail(audio, fs, length, include_self=True, seg_method='regular'):
     # Segment the audio
     segments_in_seconds = seg.segment(audio, fs, length=length, method=seg_method)

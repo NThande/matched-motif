@@ -62,7 +62,7 @@ def draw_matrix_evolution(audio, fs, length, name='audio'):
     adjacency_list.append(adjacency_no_overlap)
     title_list.append('No Overlap')
 
-    adjacency_reweight = analyzer.reweight_by_time(segments, np.copy(adjacency_no_overlap))
+    adjacency_reweight = analyzer.add_time_distance(segments, np.copy(adjacency_no_overlap))
     adjacency_list.append(adjacency_reweight)
     title_list.append('Time Weight Added')
 

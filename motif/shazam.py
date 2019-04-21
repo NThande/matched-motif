@@ -37,7 +37,6 @@ def fingerprint(audio,
                )
 
     sxx = np.abs(sxx)
-    # sxx = 10 * np.log10(sxx)
     sxx[sxx == -np.inf] = 0  # replace infs with zeros
 
     # find local maxima
@@ -49,7 +48,6 @@ def fingerprint(audio,
 
 # Generate peak-pairs based on locally-sensitive target zone
 def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
-    # peaks = np.unique(peaks, axis=0)
     num_peaks = peaks.shape[0]
     pairs_matrix = np.zeros((0, 5))
     pairs_hash = {}
@@ -66,6 +64,7 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
                 t2 = peaks[i + j, PEAK_TIME_IDX]
                 t_delta = t2 - t1
 
+                # Hash the pairs, but also keep around the pairs as a matrix for validation
                 if MIN_TIME_DELTA <= t_delta <= MAX_TIME_DELTA:
                     pairs_matrix = np.vstack((pairs_matrix, np.array([freq1, freq2, t1, t2, t_delta])))
                     h = hashlib.sha1(
@@ -85,6 +84,7 @@ def generate_pairs(peaks, fan_value=DEFAULT_FAN_VALUE):
     return pairs_hash, pairs_matrix
 
 
+# Finds 2-D peaks in the Fourier Spectrogram
 def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
     struct = generate_binary_structure(2, 1)
     neighborhood = iterate_structure(struct, PEAK_NEIGHBORHOOD_SIZE)
@@ -114,6 +114,7 @@ def get_2d_peaks(sxx, amp_min=DEFAULT_AMP_MIN):
     return frequency_idx, time_idx
 
 
+# Search for the query)_hashes in the db_hashes
 def hash_search(db_hashes, query_hashes):
     offsets_list = []
     for query in query_hashes:

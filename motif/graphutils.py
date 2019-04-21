@@ -5,8 +5,7 @@ import pandas as pd
 import config as cfg
 
 
-# Clustering and graph analysis functions
-
+# NetworkX Graph Utility Functions
 def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
     G = nx.DiGraph()
     G = nx.from_numpy_array(adjacency, create_using=G)
@@ -27,7 +26,7 @@ def adjacency_matrix_to_graph(adjacency, labels, label_name, prune=False):
         G, node_idx = prune_graph(G)
     return G, node_idx
 
-
+# Convert a graph to an adjacency matrix
 def graph_to_adjacency_matrix(G, weight_attr='weight'):
     return nx.to_numpy_array(G, weight=weight_attr)
 
@@ -50,19 +49,8 @@ def adjacency_to_incidence_matrix(adjacency, prune=False):
         incidence[dest][i] = weight
 
     if prune:
-        incidence, relabel_idx = prune_incidence(incidence)
+        incidence, relabel_idx = prune_incidence_matrix(incidence)
         label_idx = label_idx[relabel_idx]
-        # relabels = []
-        # mask = np.ones(incidence.shape)
-        # num_pruned = 0
-        # for i in range(num_nodes):
-        #     if np.count_nonzero(incidence[i, :]) == 0:
-        #         mask[i, :] = np.zeros(num_edges)
-        #         num_pruned += 1
-        #     else:
-        #         relabels.append(labels[i])
-        # incidence = incidence[mask != 0]
-        # incidence = incidence.reshape(num_nodes - num_pruned, num_edges)
 
     return incidence, label_idx
 
@@ -96,7 +84,6 @@ def from_pandas_labels(df):
             if i == base:
                 continue
             adjacency[i, base] = 50
-            # adjacency[base, i] = 1
 
     G, _ = adjacency_matrix_to_graph(adjacency, labels, cfg.NODE_LABEL, prune=False)
     add_node_attribute(G, groups, cfg.CLUSTER_NAME)
@@ -120,7 +107,8 @@ def prune_graph(g):
     return D, label_idx
 
 
-def prune_incidence(incidence):
+# Returns incidence matrix with no isolated nodes
+def prune_incidence_matrix(incidence):
     label_idx = []
     num_nodes = incidence.shape[0]
     num_edges = incidence.shape[1]
@@ -221,9 +209,11 @@ def condense_by_attr(g, merge_attr, weight_attr='weight'):
         if u_d == v_d:
             continue
 
+        # Make a new edge if necessary
         if (u_d, v_d) not in D.edges():
             D.add_edge(u_d, v_d)
 
+        # Otherwise add to the old edge
         attr_data = g.edges()[u, v][weight_attr]
         if (u_d, v_d) in edge_data:
             edge_data[(u_d, v_d)] += attr_data

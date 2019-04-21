@@ -1,3 +1,4 @@
+# A collection of default values
 AUDIO_DIR = './bin/labelled'
 FREQ_IDX = 0
 PEAK_TIME_IDX = 1
@@ -14,4 +15,3 @@ END_IDX = 1
 LABEL_IDX = 2
 N_ClUSTERS = 10
 K_THRESH = 11
-# K_THRESH = 0

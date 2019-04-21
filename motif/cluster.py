@@ -37,6 +37,7 @@ def agglom(incidence, k_clusters=2, linkage='ward'):
     return agglom
 
 
+# Cluster using spectral clustering, starting with k_clusters clusters.
 def spectral(incidence, k_clusters=2):
     spectral_clf = skc.SpectralClustering(n_clusters=k_clusters)
     spectral = spectral_clf.fit_predict(incidence)

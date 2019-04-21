@@ -139,8 +139,8 @@ def tune_length_with_audio(audio, fs):
 
 
 def main():
-    name = 't4'
-    in_dir = './bin/test'
+    name = 't20'
+    in_dir = './bin/'
     out_dir = './bin/results'
     audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
     # audio_labels = fileutils.load_labels(name, label_dir=in_dir)
@@ -156,10 +156,10 @@ def main():
     #                         show_plot=('arc',))
     # k_means_analysis(audio, fs, length, name=name, k_clusters=(5, 25, 50),
     #                  show_plot=('motif',))
-    thresh = 0
-    audio_sample = audio[0:30*fs]
+    thresh = 11
+    audio_sample = audio
     results, G_set = threshold_analysis(audio_sample, fs, length, name=name,
-                                        show_plot=('motif', 'matrix'), threshold=thresh)
+                                        show_plot=('motif','matrix'), threshold=thresh)
     write_motifs(audio_sample, fs, name, out_dir, results[thresh])
 
     visutils.show()
