@@ -1,2 +1,16 @@
+def analyze(audio_file):
+    raw_audio, fs = load_audio_from_file(audio_file)
 
-analyze(audio, fs):
+    audio = normalize(down_mix(raw_audio))
+
+    time_segments = segment(audio)
+
+    self_similarity_matrix = calculate_self_similarity(time_segments, audio)
+
+    motif_segments, motif_labels = cluster_and_merge_motifs(self_similarity_matrix)Motif Discovery Pseudocode
+
+    motif_file = write_motifs_to_file(motif_segments, motif_labels)
+
+    return motif_file
+
+

@@ -432,7 +432,7 @@ def draw_node_labels(node_positions,
                               transform=ax.transData,
                               bbox=bbox,
                               clip_on=False,
-                              rotation=30)
+                              rotation=90)
         artists[ii] = text_object
 
     return artists

@@ -12,10 +12,15 @@ def matched_filter(ref, sig, segments):
     num_windows = segments.shape[0]
     length = ref.shape[0]
     match_results = np.zeros(num_windows)
+
+    # Peak normalization
+    ref_n = ref / np.max(np.abs(ref), axis=0)
     for j in range(0, num_windows):
         cur_sig = sig[int(segments[j]): int(segments[j] + length)]
         cur_sig = cur_sig[0:length]
-        match_results[j] = np.dot(ref.T, cur_sig)
+        cur_sig_n = cur_sig / np.max(np.abs(cur_sig), axis=0)
+        # match_results[j] = np.dot(ref.T, cur_sig)
+        match_results[j] = np.dot(ref_n.T, cur_sig_n)
     return match_results
 
 

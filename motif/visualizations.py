@@ -197,25 +197,26 @@ def draw_super_axis(fig):
 
 
 def main():
-    # name = 'Repeat'
-    # in_dir = './bin/test'
-    # audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-    # length = cfg.SEGMENT_LENGTH
+    name = 'Repeat'
+    in_dir = './bin/test'
+    audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    length = cfg.SEGMENT_LENGTH
     #
     # fig = draw_segmentation_evolution(audio, fs)
     # vis.save_fig(fig, './bin/graphs/', 'SEG_{audio_name}'.format(audio_name=name))
     #
     # thresh = 0.95
-    # starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, threshold=thresh)
+    thresh = 0.985
+    starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, threshold=thresh, seg_method='beat')
     #
     # fig = vis.get_fig()
     # fig.suptitle('Arc Graph Clustering')
     # ax = draw_super_axis(fig)
     # ax = draw_simple_arc(G, with_labels=True, with_color=True, ax=ax)
     # vis.save_fig(fig, './bin/graphs/', 'ARC_{audio_name}_clustered'.format(audio_name=name))
-    #
-    # fig = draw_matrix_arc_chord_demo(G, name, with_chord=False)
-    # vis.save_fig(fig, './bin/graphs/', 'SSM2ARC_{audio_name}'.format(audio_name=name))
+
+    fig = draw_matrix_arc_chord_demo(G, name, with_chord=False)
+    vis.save_fig(fig, './bin/graphs/', 'SSM2ARC_{audio_name}'.format(audio_name=name))
     #
     # name = 't3'
     # in_dir = './bin/test'
@@ -224,21 +225,21 @@ def main():
     # fig = draw_matrix_evolution(audio, fs, length, name)
     # vis.save_fig(fig, './bin/graphs/', 'SSM_{audio_name}'.format(audio_name=name))
 
-    results = {}
-    methods = ('With Clustering', 'With Join')
-
-    name = 'Avril'
-    in_dir = "./bin/test"
-    audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
-    length = cfg.SEGMENT_LENGTH
-
-    audio_labels = fileutils.load_labels(name, label_dir=in_dir)
-    ref_starts, ref_ends, ref_labels = motif.df_to_motif(audio_labels)
-    fig = vis.get_fig()
-    ax = fig.add_subplot(1, 1, 1)
-    ax = vis.plot_motif_segmentation(audio, fs, ref_starts, ref_ends, ref_labels, ax=ax)
-    fig.suptitle('Hand-Labelled Description of {}'.format(name))
-    vis.save_fig(fig, './bin/graphs/', 'IDEAL_{audio_name}'.format(audio_name=name))
+    # results = {}
+    # methods = ('With Clustering', 'With Join')
+    #
+    # name = 'Avril'
+    # in_dir = "./bin/test"
+    # audio, fs = fileutils.load_audio(name, audio_dir=in_dir)
+    # length = cfg.SEGMENT_LENGTH
+    #
+    # audio_labels = fileutils.load_labels(name, label_dir=in_dir)
+    # ref_starts, ref_ends, ref_labels = motif.df_to_motif(audio_labels)
+    # fig = vis.get_fig()
+    # ax = fig.add_subplot(1, 1, 1)
+    # ax = vis.plot_motif_segmentation(audio, fs, ref_starts, ref_ends, ref_labels, ax=ax)
+    # fig.suptitle('Hand-Labelled Description of {}'.format(name))
+    # vis.save_fig(fig, './bin/graphs/', 'IDEAL_{audio_name}'.format(audio_name=name))
 
 
     # starts, ends, labels, G = analyzer.analyze(audio, fs, seg_length=length, with_join=False)
