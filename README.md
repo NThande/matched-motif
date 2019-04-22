@@ -11,6 +11,6 @@ This repository is for documentation purposes; future work is not planned.
 
 To find motifs, simply call:
 
-## motif_starts, motif_ends, motif_labels, motif_graph = analyzer.analyze(audio, fs)
+motif_starts, motif_ends, motif_labels, motif_graph = analyzer.analyze(audio, fs)
 
 There are many options for changing how the input is calculated. 
