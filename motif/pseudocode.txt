@@ -1,16 +1,83 @@
-def analyze(audio_file):
-    raw_audio, fs = load_audio_from_file(audio_file)
+# Algorithm: Create a structural description from audio
+# Input: Audio A
+# Output: Structural Description D
 
-    audio = normalize(down_mix(raw_audio))
+    S = segment(A)
 
-    time_segments = segment(audio)
+    M = self_similarity_matrix(A, S)
 
-    self_similarity_matrix = calculate_self_similarity(time_segments, audio)
+    D = motif_clustering(S, M)
 
-    motif_segments, motif_labels = cluster_and_merge_motifs(self_similarity_matrix)Motif Discovery Pseudocode
+    return D
 
-    motif_file = write_motifs_to_file(motif_segments, motif_labels)
+# Algorithm: Calculate self-similarity matrix
+# Input: Song Audio A, Segments S
+# Output: Self-Similarity Matrix M
 
-    return motif_file
+    # Generate raw self-similarity matrix with a similarity metric
+    M = calculate_self_similarity(A, S)
+
+    # Function for normalizing each row of M
+    func rowNormalize(M)
+        for each row in M
+            row = row / AbsoluteMax(row)
+            M[row] = row
+
+    M = rowNormalize(M)
+
+    # Remove self-overlapping segments' similarity
+    for each seg_i in S
+        for each seg_j in S
+            if seg_i overlaps seg_j
+                M[i, j] = 0
+
+    M = rowNormalize(M)
+
+    # Add time-distance weight to self-similarity matrix
+    for each seg_i in S
+        for each seg_j in S
+            time_distance = |seg_i - seg_j| / Length of A
+            M[i, j] = M[i, j] + (1/10) * time_distance
+
+    M = rowNormalize(M)
+
+    # Keep only topK in each row
+    for each row in M
+        row = selectTopK(row)
+        M[row] = row
+
+    M = rowNormalize(M)
+
+    return M
+
+
+# Algorithm: Create a structural description from self-similarity matrix
+# Input: Segments S, Self-Similarity Matrix M
+# Output: Structural Description D
+
+    # Perform k-means clustering
+    labels = K-MeansClustering(M)
+
+    # Merge segments to remove overlap, assuming seg_i is before seg_j
+    for seg_i in S
+        for seg_j in S
+            if seg_i overlaps seg_j
+                if labels[i] == labels[j]
+                    mergeSegments(seg_i, seg_j, labels)
+                else
+                    seg_j starts end of seg_i
+
+    # Join repeating sequences of segments into larger motifs
+    lcsr = labels
+    while length(lcsr) > 1
+        lcsr = findLongestRepeatingSubsequence(labels)
+        labels = labels.replace(lcsr, new_label)
+        S = mergeSegments(S, S, labels)
+
+    D = (S, labels)
+    return D
+
+
+
 
 
