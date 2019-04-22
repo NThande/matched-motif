@@ -1,4 +1,4 @@
-# motif-discovery
+# matched-motif
 Matched-Filter Musical Motif Discovery
 
 This is a system that uses the Matched Filter to find all repeating parts in a song.
