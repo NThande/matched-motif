@@ -9,8 +9,12 @@ This repository is for documentation purposes; future work is not planned.
 
 # Usage
 
-To find motifs, simply call:
+To find motifs, simply load in audio and call:
 
-motif_starts, motif_ends, motif_labels, motif_graph = analyzer.analyze(audio, fs)
+```
+starts, ends, labels, motif_graph = analyzer.analyze(audio, fs)
+```
 
 There are many options for changing how the input is calculated. 
+
+More info to come. 
